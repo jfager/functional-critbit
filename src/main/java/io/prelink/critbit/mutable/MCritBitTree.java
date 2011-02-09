@@ -4,7 +4,7 @@ import io.prelink.critbit.BitChecker;
 
 
 /**
- * Like FuncCritBitTree, except w/ nodes that are mutable where it makes
+ * Like immutable.CritBitTree, except w/ nodes that are mutable where it makes
  * sense, hypothesis being we can cut down on garbage collection a bit.
  */
 public class MCritBitTree<K,V> {
