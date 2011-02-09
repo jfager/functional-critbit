@@ -41,6 +41,18 @@ public class PatriciaTrieTest {
             String.format("Done!  Put %s keys in %s ms", ITERS, end-start));
     }
 
+    private static class FCBFlipper {
+        //Since FCB is purely functional, this helper class will handle
+        //tracking the current FCB.
+        private FuncCritBitTree<String,String> fcb;
+        public FCBFlipper() {
+            this.fcb = new FuncCritBitTree<String, String>(new StringBitChecker());
+        }
+        public void insert(String key, String val) {
+            this.fcb = fcb.insert(key, val);
+        }
+    }
+
     public static void main(final String[] args) throws Exception {
 
         final Map<String, String> hm = new HashMap<String, String>();
@@ -56,8 +68,7 @@ public class PatriciaTrieTest {
             public void put(String k, String v) { pshm.put(k, v); }
         });
 
-        final FuncCritBitTree<String, String> fcb =
-            new FuncCritBitTree<String, String>(new StringBitChecker());
+        final FCBFlipper fcb = new FCBFlipper();
         putTest(new Putter() {
             public String name() { return "Functional Crit Bit"; }
             public void put(String k, String v) { fcb.insert(k, v); }

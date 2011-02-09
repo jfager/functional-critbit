@@ -212,20 +212,27 @@ public class FuncCritBitTree<K,V> {
     }
 
     private final BitChecker<K> bitChecker;
-    private Node<K,V> root = null;
+    private final Node<K,V> root;
 
     public FuncCritBitTree(BitChecker<K> bitChecker) {
         this.bitChecker = bitChecker;
+        this.root = null;
     }
 
-    public void insert(K key, V val) {
+    private FuncCritBitTree(Node<K,V> root, BitChecker<K> bitChecker) {
+        this.bitChecker = bitChecker;
+        this.root = root;
+    }
+
+    public FuncCritBitTree<K,V> insert(K key, V val) {
         if(root == null) {
-            root = new InitialNode<K,V>(key, val);
-            return;
+            return new FuncCritBitTree<K,V>(new InitialNode<K,V>(key, val),
+                                            bitChecker);
         }
         SearchResult<K,V> sr = root.search(key, bitChecker);
         int i = bitChecker.firstDiff(key, sr.key);
-        root = root.insert(i, key, val, bitChecker);
+        return new FuncCritBitTree<K,V>(root.insert(i, key, val, bitChecker),
+                                        bitChecker);
     }
 
     public V search(K key) {
