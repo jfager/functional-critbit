@@ -1,11 +1,15 @@
-package io.prelink.critbit;
+package io.prelink.critbit.immutable;
+
+import io.prelink.critbit.BitChecker;
 
 
 /**
- * Like FuncCritBitTree, except w/ nodes that are mutable where it makes
- * sense, hypothesis being we can cut down on garbage collection a bit.
+ * An OO/Functional Java crit-bit tree, inspired by
+ * djb (http://cr.yp.to/critbit.html),
+ * Adam Langley (https://github.com/agl/critbit),
+ * and Okasaki (http://www.eecs.usma.edu/webs/people/okasaki/pubs.html)
  */
-public class MutableCritBitTree<K,V> {
+public class CritBitTree<K,V> {
 
     private static class SearchResult<K,V> {
         public final K key;
@@ -110,12 +114,10 @@ public class MutableCritBitTree<K,V> {
             }
         }
         public Node<K,V> setLeft(int diffBit, K key, V val, BitChecker<K> chk) {
-            //returning different kind of node, can't use mutability.
             Node<K,V> newLeft = mkShortBothChild(diffBit, key, val, leftKey, leftVal, chk);
             return new ShortRightNode<K,V>(this.bit, newLeft, rightKey, rightVal);
         }
         public Node<K,V> setRight(int diffBit, K key, V val, BitChecker<K> chk) {
-            //returning different kind of node, can't use mutability.
             Node<K,V> newRight = mkShortBothChild(diffBit, key, val, rightKey, rightVal, chk);
             return new ShortLeftNode<K,V>(this.bit, leftKey, leftVal, newRight);
         }
@@ -125,7 +127,7 @@ public class MutableCritBitTree<K,V> {
         private final int bit;
         private final K leftKey;
         private final V leftVal;
-        private Node<K,V> right;
+        private final Node<K,V> right;
         public ShortLeftNode(int bit, K leftKey, V leftVal, Node<K,V> right) {
             this.bit = bit;
             this.leftKey = leftKey;
@@ -143,21 +145,20 @@ public class MutableCritBitTree<K,V> {
             }
         }
         public Node<K,V> setLeft(int diffBit, K key, V val, BitChecker<K> chk) {
-            //returning different kind of node, can't use mutability.
             Node<K,V> newLeft = mkShortBothChild(diffBit, key, val, leftKey, leftVal, chk);
             return new TallNode<K,V>(this.bit, newLeft, right);
         }
         public Node<K,V> setRight(int diffBit, K key, V val, BitChecker<K> chk) {
-            this.right = right.insert(diffBit, key, val, chk);
-            return this;
+            Node<K,V> newRight = right.insert(diffBit, key, val, chk);
+            return new ShortLeftNode<K,V>(this.bit, leftKey, leftVal, newRight);
         }
 
     }
     private static class ShortRightNode<K,V> extends AbstractNode<K,V> {
         private final int bit;
+        private final Node<K,V> left;
         private final K rightKey;
         private final V rightVal;
-        private Node<K,V> left;
         public ShortRightNode(int bit, Node<K,V> left, K rightKey, V rightVal) {
             this.bit = bit;
             this.left = left;
@@ -175,19 +176,18 @@ public class MutableCritBitTree<K,V> {
             }
         }
         public Node<K,V> setLeft(int diffBit, K key, V val, BitChecker<K> chk) {
-            this.left = left.insert(diffBit, key, val, chk);
-            return this;
+            Node<K,V> newLeft = left.insert(diffBit, key, val, chk);
+            return new ShortRightNode<K,V>(this.bit, newLeft, rightKey, rightVal);
         }
         public Node<K,V> setRight(int diffBit, K key, V val, BitChecker<K> chk) {
-            //returning different kind of node, can't use mutability.
             Node<K,V> newRight = mkShortBothChild(diffBit, key, val, rightKey, rightVal, chk);
             return new TallNode<K,V>(this.bit, left, newRight);
         }
     }
     private static class TallNode<K,V> extends AbstractNode<K,V> {
         private final int bit;
-        private Node<K,V> left;
-        private Node<K,V> right;
+        private final Node<K,V> left;
+        private final Node<K,V> right;
         public TallNode(int bit, Node<K,V> left, Node<K,V> right) {
             this.bit = bit;
             this.left = left;
@@ -204,30 +204,37 @@ public class MutableCritBitTree<K,V> {
             }
         }
         public Node<K,V> setLeft(int diffBit, K key, V val, BitChecker<K> chk) {
-            this.left = left.insert(diffBit, key, val, chk);
-            return this;
+            Node<K,V> newLeft = left.insert(diffBit, key, val, chk);
+            return new TallNode<K,V>(this.bit, newLeft, right);
         }
         public Node<K,V> setRight(int diffBit, K key, V val, BitChecker<K> chk) {
-            this.right = right.insert(diffBit, key, val, chk);
-            return this;
+            Node<K,V> newRight = right.insert(diffBit, key, val, chk);
+            return new TallNode<K,V>(this.bit, left, newRight);
         }
     }
 
     private final BitChecker<K> bitChecker;
-    private Node<K,V> root = null;
+    private final Node<K,V> root;
 
-    public MutableCritBitTree(BitChecker<K> bitChecker) {
+    public CritBitTree(BitChecker<K> bitChecker) {
         this.bitChecker = bitChecker;
+        this.root = null;
     }
 
-    public void insert(K key, V val) {
+    private CritBitTree(Node<K,V> root, BitChecker<K> bitChecker) {
+        this.bitChecker = bitChecker;
+        this.root = root;
+    }
+
+    public CritBitTree<K,V> insert(K key, V val) {
         if(root == null) {
-            root = new InitialNode<K,V>(key, val);
-            return;
+            return new CritBitTree<K,V>(new InitialNode<K,V>(key, val),
+                                        bitChecker);
         }
         SearchResult<K,V> sr = root.search(key, bitChecker);
         int i = bitChecker.firstDiff(key, sr.key);
-        root = root.insert(i, key, val, bitChecker);
+        return new CritBitTree<K,V>(root.insert(i, key, val, bitChecker),
+                                    bitChecker);
     }
 
     public V search(K key) {

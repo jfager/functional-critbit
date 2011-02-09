@@ -1,5 +1,8 @@
 package io.prelink.critbit;
 
+import io.prelink.critbit.immutable.CritBitTree;
+import io.prelink.critbit.mutable.MCritBitTree;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
@@ -44,9 +47,9 @@ public class PatriciaTrieTest {
     private static class FCBFlipper {
         //Since FCB is purely functional, this helper class will handle
         //tracking the current FCB.
-        private FuncCritBitTree<String,String> fcb;
+        private CritBitTree<String,String> fcb;
         public FCBFlipper() {
-            this.fcb = new FuncCritBitTree<String, String>(new StringBitChecker());
+            this.fcb = new CritBitTree<String, String>(new StringBitChecker());
         }
         public void insert(String key, String val) {
             this.fcb = fcb.insert(key, val);
@@ -74,8 +77,8 @@ public class PatriciaTrieTest {
             public void put(String k, String v) { fcb.insert(k, v); }
         });
 
-        final MutableCritBitTree<String, String> mcb =
-            new MutableCritBitTree<String, String>(new StringBitChecker());
+        final MCritBitTree<String, String> mcb =
+            new MCritBitTree<String, String>(new StringBitChecker());
         putTest(new Putter() {
             public String name() { return "Mutable Crit Bit"; }
             public void put(String k, String v) { mcb.insert(k, v); }
