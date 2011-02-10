@@ -4,7 +4,7 @@ package io.prelink.critbit;
  * Most of this based on a similar implementation from
  * (https://github.com/rkapsi/patricia-trie).
  */
-class StringBitChecker implements BitChecker<String> {
+public class StringBitChecker implements BitChecker<String> {
     private static final int MSB = 1 << Character.SIZE-1;
     public boolean isSet(String key, int i) {
         if (key == null) return false;
@@ -43,5 +43,13 @@ class StringBitChecker implements BitChecker<String> {
         }
 
         return -1; //they are the same
+    }
+
+    public int bitLength(String key) {
+        return key.length() * Character.SIZE;
+    }
+
+    public boolean startsWith(String key, String prefix) {
+        return key.startsWith(prefix);
     }
 }

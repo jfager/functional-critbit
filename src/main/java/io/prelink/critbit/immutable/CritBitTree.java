@@ -2,6 +2,10 @@ package io.prelink.critbit.immutable;
 
 import io.prelink.critbit.BitChecker;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 
 /**
  * An OO/Functional Java crit-bit tree, inspired by
@@ -11,24 +15,28 @@ import io.prelink.critbit.BitChecker;
  */
 public class CritBitTree<K,V> {
 
-    private static class SearchResult<K,V> {
-        public final K key;
-        public final V val;
-        public SearchResult(K key, V val) {
-            this.key = key;
-            this.val = val;
-        }
-    }
 
     private static interface Node<K,V> {
-        int bit();
-        SearchResult<K,V> search(K key, BitChecker<K> chk);
+        External<K,V> search(K key, BitChecker<K> chk);
         Node<K,V> insert(int diffBit, K key, V val, BitChecker<K> checker);
-        Node<K,V> setRight(int diffBit, K key, V val, BitChecker<K> chk);
-        Node<K,V> setLeft(int diffBit, K key, V val, BitChecker<K> chk);
+        Node<K,V> next(K key, BitChecker<K> checker);
+        boolean isInternal();
     }
 
-    private static abstract class AbstractNode<K,V> implements Node<K,V> {
+    private static interface Internal<K,V> extends Node<K,V> {
+        int bit();
+        Node<K,V> left();
+        Node<K,V> right();
+        Node<K,V> setLeft(int diffBit, K key, V val, BitChecker<K> chk);
+        Node<K,V> setRight(int diffBit, K key, V val, BitChecker<K> chk);
+    }
+
+    private static interface External<K,V> extends Node<K,V> {
+        K key();
+        V value();
+    }
+
+    private static abstract class AbstractInternal<K,V> implements Internal<K,V> {
 
         public Node<K,V> insert(int diffBit, K k, V v, BitChecker<K> chk) {
             if(diffBit < bit()) {
@@ -46,6 +54,12 @@ public class CritBitTree<K,V> {
             }
         }
 
+        public Node<K,V> next(K key, BitChecker<K> chk) {
+            return chk.isSet(key, bit()) ? right() : left();
+        }
+
+        public boolean isInternal() { return true; }
+
         protected Node<K,V> mkShortBothChild(int diffBit,
                                              K newKey, V newVal,
                                              K oldKey, V oldVal,
@@ -59,19 +73,22 @@ public class CritBitTree<K,V> {
         }
     }
 
-    private static class InitialNode<K,V> implements Node<K,V> {
+    private static class LeafNode<K,V> implements External<K,V> {
         private final K key;
         private final V value;
-        public InitialNode(K key, V value) {
+        public LeafNode(K key, V value) {
             this.key = key;
             this.value = value;
         }
-        public SearchResult<K,V> search(K key, BitChecker<K> chk) {
-            return new SearchResult<K,V>(this.key, this.value);
+        public K key() { return this.key; }
+        public V value() { return this.value; }
+        public Node<K,V> next(K key, BitChecker<K> checker) { return null; }
+        public External<K,V> search(K key, BitChecker<K> chk) {
+            return this;
         }
         public Node<K,V> insert(int diffBit, K key, V val, BitChecker<K> chk) {
             if(diffBit < 0) {
-                return new InitialNode<K,V>(key, val);
+                return new LeafNode<K,V>(key, val);
             }
             else if(chk.isSet(key, diffBit)) { //new key goes right
                 return new ShortBothNode<K,V>(diffBit, this.key, this.value, key, val);
@@ -79,16 +96,10 @@ public class CritBitTree<K,V> {
                 return new ShortBothNode<K,V>(diffBit, key, val, this.key, this.value);
             }
         }
-        public int bit() { throw new UnsupportedOperationException(); }
-        public Node<K, V> setRight(int diffBit, K key, V val, BitChecker<K> chk) {
-            throw new UnsupportedOperationException();
-        }
-        public Node<K, V> setLeft(int diffBit, K key, V val, BitChecker<K> chk) {
-            throw new UnsupportedOperationException();
-        }
+        public boolean isInternal() { return false; }
     }
 
-    private static class ShortBothNode<K,V> extends AbstractNode<K,V> {
+    private static class ShortBothNode<K,V> extends AbstractInternal<K,V> {
         private final int bit;
         private final K leftKey;
         private final V leftVal;
@@ -106,13 +117,15 @@ public class CritBitTree<K,V> {
         public int bit() {
             return bit;
         }
-        public SearchResult<K,V> search(K key, BitChecker<K> chk) {
+        public External<K,V> search(K key, BitChecker<K> chk) {
             if(chk.isSet(key, bit)) {
-                return new SearchResult<K,V>(this.rightKey, this.rightVal);
+                return new LeafNode<K,V>(this.rightKey, this.rightVal);
             } else {
-                return new SearchResult<K,V>(this.leftKey, this.leftVal);
+                return new LeafNode<K,V>(this.leftKey, this.leftVal);
             }
         }
+        public Node<K,V> left() { return new LeafNode<K,V>(leftKey, leftVal); }
+        public Node<K,V> right() { return new LeafNode<K,V>(rightKey, rightVal); }
         public Node<K,V> setLeft(int diffBit, K key, V val, BitChecker<K> chk) {
             Node<K,V> newLeft = mkShortBothChild(diffBit, key, val, leftKey, leftVal, chk);
             return new ShortRightNode<K,V>(this.bit, newLeft, rightKey, rightVal);
@@ -123,7 +136,7 @@ public class CritBitTree<K,V> {
         }
     }
 
-    private static class ShortLeftNode<K,V> extends AbstractNode<K,V> {
+    private static class ShortLeftNode<K,V> extends AbstractInternal<K,V> {
         private final int bit;
         private final K leftKey;
         private final V leftVal;
@@ -137,13 +150,15 @@ public class CritBitTree<K,V> {
         public int bit() {
             return bit;
         }
-        public SearchResult<K,V> search(K key, BitChecker<K> chk) {
+        public External<K,V> search(K key, BitChecker<K> chk) {
             if(chk.isSet(key, bit)) {
                 return right.search(key, chk);
             } else {
-                return new SearchResult<K,V>(this.leftKey, this.leftVal);
+                return new LeafNode<K,V>(this.leftKey, this.leftVal);
             }
         }
+        public Node<K,V> left() { return new LeafNode<K,V>(leftKey, leftVal); }
+        public Node<K,V> right() { return right; }
         public Node<K,V> setLeft(int diffBit, K key, V val, BitChecker<K> chk) {
             Node<K,V> newLeft = mkShortBothChild(diffBit, key, val, leftKey, leftVal, chk);
             return new TallNode<K,V>(this.bit, newLeft, right);
@@ -154,7 +169,7 @@ public class CritBitTree<K,V> {
         }
 
     }
-    private static class ShortRightNode<K,V> extends AbstractNode<K,V> {
+    private static class ShortRightNode<K,V> extends AbstractInternal<K,V> {
         private final int bit;
         private final Node<K,V> left;
         private final K rightKey;
@@ -168,13 +183,15 @@ public class CritBitTree<K,V> {
         public int bit() {
             return bit;
         }
-        public SearchResult<K,V> search(K key, BitChecker<K> chk) {
+        public External<K,V> search(K key, BitChecker<K> chk) {
             if(chk.isSet(key, bit)) {
-                return new SearchResult<K,V>(this.rightKey, this.rightVal);
+                return new LeafNode<K,V>(this.rightKey, this.rightVal);
             } else {
                 return left.search(key, chk);
             }
         }
+        public Node<K,V> left() { return left; }
+        public Node<K,V> right() { return new LeafNode<K,V>(rightKey, rightVal); }
         public Node<K,V> setLeft(int diffBit, K key, V val, BitChecker<K> chk) {
             Node<K,V> newLeft = left.insert(diffBit, key, val, chk);
             return new ShortRightNode<K,V>(this.bit, newLeft, rightKey, rightVal);
@@ -184,7 +201,7 @@ public class CritBitTree<K,V> {
             return new TallNode<K,V>(this.bit, left, newRight);
         }
     }
-    private static class TallNode<K,V> extends AbstractNode<K,V> {
+    private static class TallNode<K,V> extends AbstractInternal<K,V> {
         private final int bit;
         private final Node<K,V> left;
         private final Node<K,V> right;
@@ -196,13 +213,15 @@ public class CritBitTree<K,V> {
         public int bit() {
             return bit;
         }
-        public SearchResult<K,V> search(K key, BitChecker<K> chk) {
+        public External<K,V> search(K key, BitChecker<K> chk) {
             if(chk.isSet(key, bit)) {
                 return right.search(key, chk);
             } else {
                 return left.search(key, chk);
             }
         }
+        public Node<K,V> left() { return left; }
+        public Node<K,V> right() { return right; }
         public Node<K,V> setLeft(int diffBit, K key, V val, BitChecker<K> chk) {
             Node<K,V> newLeft = left.insert(diffBit, key, val, chk);
             return new TallNode<K,V>(this.bit, newLeft, right);
@@ -228,16 +247,51 @@ public class CritBitTree<K,V> {
 
     public CritBitTree<K,V> insert(K key, V val) {
         if(root == null) {
-            return new CritBitTree<K,V>(new InitialNode<K,V>(key, val),
+            return new CritBitTree<K,V>(new LeafNode<K,V>(key, val),
                                         bitChecker);
         }
-        SearchResult<K,V> sr = root.search(key, bitChecker);
-        int i = bitChecker.firstDiff(key, sr.key);
+        External<K,V> ext = root.search(key, bitChecker);
+        int i = bitChecker.firstDiff(key, ext.key());
         return new CritBitTree<K,V>(root.insert(i, key, val, bitChecker),
                                     bitChecker);
     }
 
     public V search(K key) {
-        return root.search(key, bitChecker).val;
+        return root.search(key, bitChecker).value();
+    }
+
+    public List<V> fetchPrefixed(K key) {
+        if(root == null) {
+            return Collections.emptyList();
+        }
+
+        int keyLen = bitChecker.bitLength(key);
+        Node<K,V> current = root;
+        Node<K,V> top = root;
+        while(current.isInternal()) {
+            Internal<K,V> internal = (Internal<K,V>)current;
+            current = internal.next(key, bitChecker);
+            if(internal.bit() < keyLen) {
+                top = current;
+            }
+        }
+        External<K,V> external = (External<K,V>)current;
+        if(!bitChecker.startsWith(external.key() , key)) {
+            return Collections.emptyList();
+        } else {
+            List<V> out = new ArrayList<V>();
+            traverse(top, out);
+            return out;
+        }
+    }
+
+    private void traverse(Node<K,V> top, final List<V> list) {
+        if(top.isInternal()) {
+            Internal<K,V> internal = (Internal<K,V>)top;
+            traverse(internal.left(), list);
+            traverse(internal.right(), list);
+        } else {
+            list.add(((External<K,V>)top).value());
+        }
     }
 }
