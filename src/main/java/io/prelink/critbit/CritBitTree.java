@@ -122,7 +122,7 @@ public class CritBitTree<K,V> extends AbstractCritBitTree<K,V> {
 
     Node<K,V> root() { return root; }
 
-    public CritBitTree<K,V> insert(K key, V val) {
+    public CritBitTree<K,V> put(K key, V val) {
         if(root() == null) {
             return new CritBitTree<K,V>(ctx().nf.mkLeaf(key, val), ctx());
         }

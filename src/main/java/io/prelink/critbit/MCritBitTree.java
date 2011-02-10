@@ -123,7 +123,7 @@ public class MCritBitTree<K,V> extends AbstractCritBitTree<K,V> {
 
     Node<K,V> root() { return root; }
 
-    public void insert(K key, V val) {
+    public void put(K key, V val) {
         if(root() == null) {
             root = new LeafNode<K,V>(key, val);
             return;

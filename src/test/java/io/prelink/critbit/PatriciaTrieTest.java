@@ -51,8 +51,8 @@ public class PatriciaTrieTest {
         public FCBFlipper() {
             this.fcb = new CritBitTree<String, String>(new StringBitChecker());
         }
-        public void insert(String key, String val) {
-            this.fcb = fcb.insert(key, val);
+        public void put(String key, String val) {
+            this.fcb = fcb.put(key, val);
         }
     }
 
@@ -74,14 +74,14 @@ public class PatriciaTrieTest {
         final FCBFlipper fcb = new FCBFlipper();
         putTest(new Putter() {
             public String name() { return "Functional Crit Bit"; }
-            public void put(String k, String v) { fcb.insert(k, v); }
+            public void put(String k, String v) { fcb.put(k, v); }
         });
 
         final MCritBitTree<String, String> mcb =
             new MCritBitTree<String, String>(new StringBitChecker());
         putTest(new Putter() {
             public String name() { return "Mutable Crit Bit"; }
-            public void put(String k, String v) { mcb.insert(k, v); }
+            public void put(String k, String v) { mcb.put(k, v); }
         });
 
 //      final PatriciaTrie<String, String> ptrie =
