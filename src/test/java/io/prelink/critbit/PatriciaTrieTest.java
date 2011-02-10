@@ -1,7 +1,7 @@
 package io.prelink.critbit;
 
-import io.prelink.critbit.immutable.CritBitTree;
-import io.prelink.critbit.mutable.MCritBitTree;
+import io.prelink.critbit.CritBitTree;
+import io.prelink.critbit.MCritBitTree;
 
 import java.util.HashMap;
 import java.util.Map;
