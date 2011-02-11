@@ -28,12 +28,13 @@ public class PatriciaTrieTest {
     }
     private static void putTest(Putter p) {
         Random rand = new Random(SEED);
-        System.out.print("Warming up " + p.name());
+        System.out.print("Warming up " + p.name() + "... ");
         for(int i=0; i<WARMUPS; i++) {
             String key = randomString(rand);
             p.put(key, ""+i);
         }
-        System.out.print(" Starting test...");
+        System.out.println("Done!");
+        System.out.print(String.format("Starting test for %s...", p.name()));
         final long start = System.currentTimeMillis();
         for(int i=0; i<ITERS; i++) {
             String key = RandomStringUtils.random(RandomUtils.nextInt(100) + 1);
@@ -41,7 +42,12 @@ public class PatriciaTrieTest {
         }
         final long end = System.currentTimeMillis();
         System.out.println(
-            String.format("Done!  Put %s keys in %s ms", ITERS, end-start));
+            String.format("Done! Put %s keys in %s ms", ITERS, end-start));
+
+        p.put("", "nothing");
+        p.put("", "nothingelse");
+        p.put("something", "something");
+        p.put("something", "somethingelse");
     }
 
     private static class FCBFlipper {
