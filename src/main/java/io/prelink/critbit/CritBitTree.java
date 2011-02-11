@@ -6,9 +6,9 @@ package io.prelink.critbit;
  * Adam Langley (https://github.com/agl/critbit),
  * and Okasaki (http://www.eecs.usma.edu/webs/people/okasaki/pubs.html)
  */
-public class CritBitTree<K,V> extends AbstractCritBitTree<K,V> {
+public final class CritBitTree<K,V> extends AbstractCritBitTree<K,V> {
 
-    static class ShortLeftNode<K,V> extends AbstractInternal<K,V> {
+    static final class ShortLeftNode<K,V> extends AbstractInternal<K,V> {
         private final K leftKey;
         private final V leftVal;
         private final Node<K,V> right;
@@ -18,16 +18,12 @@ public class CritBitTree<K,V> extends AbstractCritBitTree<K,V> {
             this.leftVal = leftVal;
             this.right = right;
         }
-        public External<K,V> search(K key, Context<K,V> ctx) {
-            if(ctx.chk.isSet(key, bit())) {
-                return right.search(key, ctx);
-            } else {
-                return ctx.nf.mkLeaf(this.leftKey, this.leftVal);
-            }
-        }
         public Node<K,V> left(Context<K,V> ctx) { return ctx.nf.mkLeaf(leftKey, leftVal); }
         public Node<K,V> right(Context<K,V> ctx) { return right; }
         public Node<K,V> setLeft(int diffBit, K key, V val, Context<K,V> ctx) {
+            if(diffBit < 0) {
+                return ctx.nf.mkShortLeft(bit(), key, val, right);
+            }
             Node<K,V> newLeft = mkShortBothChild(diffBit, key, val, leftKey, leftVal, ctx);
             return ctx.nf.mkTall(bit(), newLeft, right);
         }
@@ -35,8 +31,10 @@ public class CritBitTree<K,V> extends AbstractCritBitTree<K,V> {
             Node<K,V> newRight = right.insert(diffBit, key, val, ctx);
             return ctx.nf.mkShortLeft(bit(), leftKey, leftVal, newRight);
         }
+        public boolean hasExternalLeft() { return true; }
+        public boolean hasExternalRight() { return false; }
     }
-    static class ShortRightNode<K,V> extends AbstractInternal<K,V> {
+    static final class ShortRightNode<K,V> extends AbstractInternal<K,V> {
         private final Node<K,V> left;
         private final K rightKey;
         private final V rightVal;
@@ -46,13 +44,6 @@ public class CritBitTree<K,V> extends AbstractCritBitTree<K,V> {
             this.rightKey = rightKey;
             this.rightVal = rightVal;
         }
-        public External<K,V> search(K key, Context<K,V> ctx) {
-            if(ctx.chk.isSet(key, bit())) {
-                return ctx.nf.mkLeaf(this.rightKey, this.rightVal);
-            } else {
-                return left.search(key, ctx);
-            }
-        }
         public Node<K,V> left(Context<K,V> ctx) { return left; }
         public Node<K,V> right(Context<K,V> ctx) { return ctx.nf.mkLeaf(rightKey, rightVal); }
         public Node<K,V> setLeft(int diffBit, K key, V val, Context<K,V> ctx) {
@@ -60,24 +51,22 @@ public class CritBitTree<K,V> extends AbstractCritBitTree<K,V> {
             return ctx.nf.mkShortRight(bit(), newLeft, rightKey, rightVal);
         }
         public Node<K,V> setRight(int diffBit, K key, V val, Context<K,V> ctx) {
+            if(diffBit < 0) {
+                return ctx.nf.mkShortRight(bit(), left, key, val);
+            }
             Node<K,V> newRight = mkShortBothChild(diffBit, key, val, rightKey, rightVal, ctx);
             return ctx.nf.mkTall(bit(), left, newRight);
         }
+        public boolean hasExternalLeft() { return false; }
+        public boolean hasExternalRight() { return true; }
     }
-    static class TallNode<K,V> extends AbstractInternal<K,V> {
+    static final class TallNode<K,V> extends AbstractInternal<K,V> {
         private final Node<K,V> left;
         private final Node<K,V> right;
         public TallNode(int bit, Node<K,V> left, Node<K,V> right) {
             super(bit);
             this.left = left;
             this.right = right;
-        }
-        public External<K,V> search(K key, Context<K,V> ctx) {
-            if(ctx.chk.isSet(key, bit())) {
-                return right.search(key, ctx);
-            } else {
-                return left.search(key, ctx);
-            }
         }
         public Node<K,V> left(Context<K,V> ctx) { return left; }
         public Node<K,V> right(Context<K,V> ctx) { return right; }
@@ -89,9 +78,11 @@ public class CritBitTree<K,V> extends AbstractCritBitTree<K,V> {
             Node<K,V> newRight = right.insert(diffBit, key, val, ctx);
             return ctx.nf.mkTall(bit(), left, newRight);
         }
+        public boolean hasExternalLeft() { return false; }
+        public boolean hasExternalRight() { return false; }
     }
 
-    static class ImmutableNodeFactory<K,V> implements NodeFactory<K,V> {
+    static final class ImmutableNodeFactory<K,V> implements NodeFactory<K,V> {
         public Internal<K,V> mkShortBoth(int diffBit, K lk, V lv, K rk, V rv) {
             return new ShortBothNode<K,V>(diffBit, lk, lv, rk, rv);
         }
@@ -126,9 +117,16 @@ public class CritBitTree<K,V> extends AbstractCritBitTree<K,V> {
         if(root() == null) {
             return new CritBitTree<K,V>(ctx().nf.mkLeaf(key, val), ctx());
         }
-        External<K,V> ext = root().search(key, ctx());
-        int i = ctx().chk.firstDiff(key, ext.key());
-        return new CritBitTree<K,V>(root().insert(i, key, val, ctx()), ctx());
+        K compKey;
+        if(root().isInternal()) {
+            SearchResult<K,V> sr = search((Internal<K,V>)root(), key);
+            compKey = sr.compKey(ctx());
+        } else {
+            compKey = ((External<K,V>)root()).key();
+        }
+
+        int diffBit = ctx().chk.firstDiff(key, compKey);
+        return new CritBitTree<K,V>(root().insert(diffBit, key, val, ctx()), ctx());
     }
 
 }

@@ -32,18 +32,25 @@ abstract class AbstractCritBitTree<K,V> {
     }
 
     static interface Node<K,V> {
-        External<K,V> search(K key, Context<K,V> ctx);
         Node<K,V> insert(int diffBit, K key, V val, Context<K,V> ctx);
-        Node<K,V> next(K key, Context<K,V> ctx);
+
         boolean isInternal();
+    }
+
+    static enum Direction {
+        LEFT, RIGHT
     }
 
     static interface Internal<K,V> extends Node<K,V> {
         int bit();
+        Direction next(K key, Context<K,V> ctx);
+        Node<K,V> nextNode(K key, Context<K,V> ctx);
         Node<K,V> left(Context<K,V> ctx);
         Node<K,V> right(Context<K,V> ctx);
         Node<K,V> setLeft(int diffBit, K key, V val, Context<K,V> ctx);
         Node<K,V> setRight(int diffBit, K key, V val, Context<K,V> ctx);
+        boolean hasExternalLeft();
+        boolean hasExternalRight();
     }
 
     static interface External<K,V> extends Node<K,V> {
@@ -58,10 +65,10 @@ abstract class AbstractCritBitTree<K,V> {
             this.bit = bit;
         }
 
-        public int bit() { return bit; }
+        public final int bit() { return bit; }
 
-        public Node<K,V> insert(int diffBit, K k, V v, Context<K,V> ctx) {
-            if(diffBit < bit()) {
+        public final Node<K,V> insert(int diffBit, K k, V v, Context<K,V> ctx) {
+            if(diffBit >= 0 && diffBit < bit()) {
                 if(ctx.chk.isSet(k, diffBit)) {
                     return ctx.nf.mkShortRight(diffBit, this, k, v);
                 } else {
@@ -76,16 +83,24 @@ abstract class AbstractCritBitTree<K,V> {
             }
         }
 
-        public Node<K,V> next(K key, Context<K,V> ctx) {
-            return ctx.chk.isSet(key, bit()) ? right(ctx) : left(ctx);
+        public final Direction next(K key, Context<K,V> ctx) {
+            return ctx.chk.isSet(key, bit()) ? Direction.RIGHT
+                                             : Direction.LEFT;
         }
 
-        public boolean isInternal() { return true; }
+        public final Node<K,V> nextNode(K key, Context<K,V> ctx) {
+            switch(next(key, ctx)) {
+            case LEFT: return left(ctx);
+            default: return right(ctx);
+            }
+        }
 
-        protected Node<K,V> mkShortBothChild(int diffBit,
-                                             K newKey, V newVal,
-                                             K oldKey, V oldVal,
-                                             Context<K,V> ctx) {
+        public final boolean isInternal() { return true; }
+
+        protected final Node<K,V> mkShortBothChild(int diffBit,
+                                                   K newKey, V newVal,
+                                                   K oldKey, V oldVal,
+                                                   Context<K,V> ctx) {
             boolean newGoesRight = ctx.chk.isSet(newKey, diffBit);
             K rKey = newGoesRight ? newKey : oldKey;
             V rVal = newGoesRight ? newVal : oldVal;
@@ -95,7 +110,7 @@ abstract class AbstractCritBitTree<K,V> {
         }
     }
 
-    static class LeafNode<K,V> implements External<K,V> {
+    static final class LeafNode<K,V> implements External<K,V> {
         private final K key;
         private final V value;
         public LeafNode(K key, V value) {
@@ -105,9 +120,6 @@ abstract class AbstractCritBitTree<K,V> {
         public K key() { return this.key; }
         public V value() { return this.value; }
         public Node<K,V> next(K key, Context<K,V> ctx) { return null; }
-        public External<K,V> search(K key, Context<K,V> ctx) {
-            return this;
-        }
         public Node<K,V> insert(int diffBit, K key, V val, Context<K,V> ctx) {
             if(diffBit < 0) {
                 return ctx.nf.mkLeaf(key, val);
@@ -121,7 +133,7 @@ abstract class AbstractCritBitTree<K,V> {
         public boolean isInternal() { return false; }
     }
 
-    static class ShortBothNode<K,V> extends AbstractInternal<K,V> {
+    static final class ShortBothNode<K,V> extends AbstractInternal<K,V> {
         private final K leftKey;
         private final V leftVal;
         private final K rightKey;
@@ -133,23 +145,24 @@ abstract class AbstractCritBitTree<K,V> {
             this.rightKey = rightKey;
             this.rightVal = rightVal;
         }
-        public External<K,V> search(K key, Context<K,V> ctx) {
-            if(ctx.chk.isSet(key, bit())) {
-                return ctx.nf.mkLeaf(this.rightKey, this.rightVal);
-            } else {
-                return ctx.nf.mkLeaf(this.leftKey, this.leftVal);
-            }
-        }
         public Node<K,V> left(Context<K,V> ctx) { return ctx.nf.mkLeaf(leftKey, leftVal); }
         public Node<K,V> right(Context<K,V> ctx) { return ctx.nf.mkLeaf(rightKey, rightVal); }
         public Node<K,V> setLeft(int diffBit, K key, V val, Context<K,V> ctx) {
+            if(diffBit < 0) {
+                return ctx.nf.mkShortBoth(bit(), key, val, rightKey, rightVal);
+            }
             Node<K,V> newLeft = mkShortBothChild(diffBit, key, val, leftKey, leftVal, ctx);
             return ctx.nf.mkShortRight(bit(), newLeft, rightKey, rightVal);
         }
         public Node<K,V> setRight(int diffBit, K key, V val, Context<K,V> ctx) {
+            if(diffBit < 0) {
+                return ctx.nf.mkShortBoth(bit(), leftKey, leftVal, key, val);
+            }
             Node<K,V> newRight = mkShortBothChild(diffBit, key, val, rightKey, rightVal, ctx);
             return ctx.nf.mkShortLeft(bit(), leftKey, leftVal, newRight);
         }
+        public boolean hasExternalLeft() { return true; }
+        public boolean hasExternalRight() { return true; }
     }
 
     private final Context<K,V> ctx;
@@ -164,11 +177,73 @@ abstract class AbstractCritBitTree<K,V> {
         return ctx;
     }
 
-    public V search(K key) {
-        return root().search(key, ctx).value();
+    static final class SearchResult<K,V> {
+        final Internal<K,V> parent;
+        final Direction pDirection;
+        final Internal<K,V> result;
+        final Direction rDirection;
+        public SearchResult(Internal<K,V> parent,
+                            Direction pDirection,
+                            Internal<K,V> result,
+                            Direction rDirection) {
+            this.parent = parent;
+            this.pDirection = pDirection;
+            this.result = result;
+            this.rDirection = rDirection;
+        }
+        K compKey(Context<K,V> ctx) {
+            switch(rDirection) {
+            case LEFT:
+                return ((External<K,V>)result.left(ctx)).key();
+            default: //case RIGHT:
+                return ((External<K,V>)result.right(ctx)).key();
+            }
+        }
     }
 
-    public List<V> fetchPrefixed(K key) {
+    final SearchResult<K,V> search(Internal<K,V> start, K key) {
+        Internal<K,V> par = null;
+        Direction parDirection = null;
+        Internal<K,V> cur = start;
+        for(;;) {
+            switch(cur.next(key, ctx)) {
+            case LEFT:
+                if(cur.hasExternalLeft()) {
+                    return new SearchResult<K,V>(par, parDirection, cur, Direction.LEFT);
+                }
+                par = cur;
+                parDirection = Direction.LEFT;
+                cur = (Internal<K,V>)cur.left(ctx);
+                break;
+            case RIGHT:
+                if(cur.hasExternalRight()) {
+                    return new SearchResult<K,V>(par, parDirection, cur, Direction.RIGHT);
+                }
+                par = cur;
+                parDirection = Direction.RIGHT;
+                cur = (Internal<K,V>)cur.right(ctx);
+                break;
+            }
+        }
+    }
+
+    public final V get(K key) {
+        if(root() == null) {
+            return null;
+        }
+        if(!root().isInternal()) {
+            return ((External<K,V>)root()).value();
+        }
+        SearchResult<K,V> sr = search((Internal<K,V>)root(), key);
+        switch(sr.rDirection) {
+        case LEFT:
+            return ((External<K,V>)sr.result.left(ctx)).value();
+        default: //case RIGHT:, but we need to convince compiler we return.
+            return ((External<K,V>)sr.result.right(ctx)).value();
+        }
+    }
+
+    public final List<V> fetchPrefixed(K key) {
         if(root() == null) {
             return Collections.emptyList();
         }
@@ -178,7 +253,14 @@ abstract class AbstractCritBitTree<K,V> {
         Node<K,V> top = current;
         while(current.isInternal()) {
             Internal<K,V> internal = (Internal<K,V>)current;
-            current = internal.next(key, ctx);
+            switch(internal.next(key,ctx)) {
+            case LEFT:
+                current = internal.left(ctx);
+                break;
+            case RIGHT:
+                current = internal.right(ctx);
+                break;
+            }
             if(internal.bit() < keyLen) {
                 top = current;
             }
@@ -193,7 +275,7 @@ abstract class AbstractCritBitTree<K,V> {
         }
     }
 
-    private void traverse(Node<K,V> top, final List<V> list) {
+    private final void traverse(Node<K,V> top, final List<V> list) {
         if(top.isInternal()) {
             Internal<K,V> internal = (Internal<K,V>)top;
             traverse(internal.left(ctx), list);
