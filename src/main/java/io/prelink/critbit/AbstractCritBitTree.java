@@ -15,11 +15,11 @@ import java.util.List;
 abstract class AbstractCritBitTree<K,V> {
 
     static interface NodeFactory<K,V> {
-        Internal<K,V> mkShortBoth(int diffBit, K lk, V lv, K rk, V rv);
-        Internal<K,V> mkShortRight(int diffBit, Node<K,V> left, K k, V v);
-        Internal<K,V> mkShortLeft(int diffBit, K k, V v, Node<K,V> right);
-        Internal<K,V> mkTall(int diffBit, Node<K,V> left, Node<K,V> right);
-        External<K,V> mkLeaf(K key, V val);
+        Node<K,V> mkShortBoth(int diffBit, K lk, V lv, K rk, V rv);
+        Node<K,V> mkShortRight(int diffBit, Node<K,V> left, K k, V v);
+        Node<K,V> mkShortLeft(int diffBit, K k, V v, Node<K,V> right);
+        Node<K,V> mkTall(int diffBit, Node<K,V> left, Node<K,V> right);
+        Node<K,V> mkLeaf(K key, V val);
     }
 
     static class Context<K,V> {
@@ -35,13 +35,8 @@ abstract class AbstractCritBitTree<K,V> {
         Node<K,V> insert(int diffBit, K key, V val, Context<K,V> ctx);
 
         boolean isInternal();
-    }
 
-    static enum Direction {
-        LEFT, RIGHT
-    }
-
-    static interface Internal<K,V> extends Node<K,V> {
+        //Should only be called for internal nodes.
         int bit();
         Direction next(K key, Context<K,V> ctx);
         Node<K,V> nextNode(K key, Context<K,V> ctx);
@@ -51,14 +46,60 @@ abstract class AbstractCritBitTree<K,V> {
         Node<K,V> setRight(int diffBit, K key, V val, Context<K,V> ctx);
         boolean hasExternalLeft();
         boolean hasExternalRight();
-    }
 
-    static interface External<K,V> extends Node<K,V> {
+        //Should only be called for external nodes.
         K key();
         V value();
     }
 
-    static abstract class AbstractInternal<K,V> implements Internal<K,V> {
+    static enum Direction {
+        LEFT, RIGHT
+    }
+
+    static abstract class BaseNode<K,V> implements Node<K,V> {
+        public Node<K, V> insert(int diffBit, K key, V val, Context<K, V> ctx) {
+            throw new UnsupportedOperationException();
+        }
+        //Everything should implement this.
+        //public boolean isInternal() {
+        //    throw new UnsupportedOperationException();
+        //}
+        public int bit() {
+            throw new UnsupportedOperationException();
+        }
+        public Direction next(K key, Context<K, V> ctx) {
+            throw new UnsupportedOperationException();
+        }
+        public Node<K, V> nextNode(K key, Context<K, V> ctx) {
+            throw new UnsupportedOperationException();
+        }
+        public Node<K, V> left(Context<K, V> ctx) {
+            throw new UnsupportedOperationException();
+        }
+        public Node<K, V> right(Context<K, V> ctx) {
+            throw new UnsupportedOperationException();
+        }
+        public Node<K, V> setLeft(int diffBit, K key, V val, Context<K, V> ctx) {
+            throw new UnsupportedOperationException();
+        }
+        public Node<K, V> setRight(int diffBit, K key, V val, Context<K, V> ctx) {
+            throw new UnsupportedOperationException();
+        }
+        public boolean hasExternalLeft() {
+            throw new UnsupportedOperationException();
+        }
+        public boolean hasExternalRight() {
+            throw new UnsupportedOperationException();
+        }
+        public K key() {
+            throw new UnsupportedOperationException();
+        }
+        public V value() {
+            throw new UnsupportedOperationException();
+        }
+    }
+
+    static abstract class AbstractInternal<K,V> extends BaseNode<K,V> {
         private final int bit;
 
         AbstractInternal(int bit) {
@@ -110,7 +151,7 @@ abstract class AbstractCritBitTree<K,V> {
         }
     }
 
-    static final class LeafNode<K,V> implements External<K,V> {
+    static final class LeafNode<K,V> extends BaseNode<K,V> {
         private final K key;
         private final V value;
         public LeafNode(K key, V value) {
@@ -119,7 +160,6 @@ abstract class AbstractCritBitTree<K,V> {
         }
         public K key() { return this.key; }
         public V value() { return this.value; }
-        public Node<K,V> next(K key, Context<K,V> ctx) { return null; }
         public Node<K,V> insert(int diffBit, K key, V val, Context<K,V> ctx) {
             if(diffBit < 0) {
                 return ctx.nf.mkLeaf(key, val);
@@ -178,13 +218,13 @@ abstract class AbstractCritBitTree<K,V> {
     }
 
     static final class SearchResult<K,V> {
-        final Internal<K,V> parent;
+        final Node<K,V> parent;
         final Direction pDirection;
-        final Internal<K,V> result;
+        final Node<K,V> result;
         final Direction rDirection;
-        public SearchResult(Internal<K,V> parent,
+        public SearchResult(Node<K,V> parent,
                             Direction pDirection,
-                            Internal<K,V> result,
+                            Node<K,V> result,
                             Direction rDirection) {
             this.parent = parent;
             this.pDirection = pDirection;
@@ -194,17 +234,17 @@ abstract class AbstractCritBitTree<K,V> {
         K compKey(Context<K,V> ctx) {
             switch(rDirection) {
             case LEFT:
-                return ((External<K,V>)result.left(ctx)).key();
+                return result.left(ctx).key();
             default: //case RIGHT:
-                return ((External<K,V>)result.right(ctx)).key();
+                return result.right(ctx).key();
             }
         }
     }
 
-    final SearchResult<K,V> search(Internal<K,V> start, K key) {
-        Internal<K,V> par = null;
+    final SearchResult<K,V> search(Node<K,V> start, K key) {
+        Node<K,V> par = null;
         Direction parDirection = null;
-        Internal<K,V> cur = start;
+        Node<K,V> cur = start;
         for(;;) {
             switch(cur.next(key, ctx)) {
             case LEFT:
@@ -213,7 +253,7 @@ abstract class AbstractCritBitTree<K,V> {
                 }
                 par = cur;
                 parDirection = Direction.LEFT;
-                cur = (Internal<K,V>)cur.left(ctx);
+                cur = cur.left(ctx);
                 break;
             case RIGHT:
                 if(cur.hasExternalRight()) {
@@ -221,7 +261,7 @@ abstract class AbstractCritBitTree<K,V> {
                 }
                 par = cur;
                 parDirection = Direction.RIGHT;
-                cur = (Internal<K,V>)cur.right(ctx);
+                cur = cur.right(ctx);
                 break;
             }
         }
@@ -232,14 +272,14 @@ abstract class AbstractCritBitTree<K,V> {
             return null;
         }
         if(!root().isInternal()) {
-            return ((External<K,V>)root()).value();
+            return root().value();
         }
-        SearchResult<K,V> sr = search((Internal<K,V>)root(), key);
+        SearchResult<K,V> sr = search(root(), key);
         switch(sr.rDirection) {
         case LEFT:
-            return ((External<K,V>)sr.result.left(ctx)).value();
+            return sr.result.left(ctx).value();
         default: //case RIGHT:, but we need to convince compiler we return.
-            return ((External<K,V>)sr.result.right(ctx)).value();
+            return sr.result.right(ctx).value();
         }
     }
 
@@ -252,21 +292,19 @@ abstract class AbstractCritBitTree<K,V> {
         Node<K,V> current = root();
         Node<K,V> top = current;
         while(current.isInternal()) {
-            Internal<K,V> internal = (Internal<K,V>)current;
-            switch(internal.next(key,ctx)) {
+            switch(current.next(key,ctx)) {
             case LEFT:
-                current = internal.left(ctx);
+                current = current.left(ctx);
                 break;
             case RIGHT:
-                current = internal.right(ctx);
+                current = current.right(ctx);
                 break;
             }
-            if(internal.bit() < keyLen) {
+            if(current.bit() < keyLen) {
                 top = current;
             }
         }
-        External<K,V> external = (External<K,V>)current;
-        if(!ctx.chk.startsWith(external.key() , key)) {
+        if(!ctx.chk.startsWith(current.key() , key)) {
             return Collections.emptyList();
         } else {
             List<V> out = new ArrayList<V>();
@@ -277,11 +315,10 @@ abstract class AbstractCritBitTree<K,V> {
 
     private final void traverse(Node<K,V> top, final List<V> list) {
         if(top.isInternal()) {
-            Internal<K,V> internal = (Internal<K,V>)top;
-            traverse(internal.left(ctx), list);
-            traverse(internal.right(ctx), list);
+            traverse(top.left(ctx), list);
+            traverse(top.right(ctx), list);
         } else {
-            list.add(((External<K,V>)top).value());
+            list.add(top.value());
         }
     }
 }

@@ -85,19 +85,19 @@ public final class MCritBitTree<K,V> extends AbstractCritBitTree<K,V> {
     }
 
     static final class MutableNodeFactory<K,V> implements NodeFactory<K,V> {
-        public Internal<K,V> mkShortBoth(int diffBit, K lk, V lv, K rk, V rv) {
+        public Node<K,V> mkShortBoth(int diffBit, K lk, V lv, K rk, V rv) {
             return new ShortBothNode<K,V>(diffBit, lk, lv, rk, rv);
         }
-        public Internal<K,V> mkShortRight(int diffBit, Node<K,V> left, K k, V v) {
+        public Node<K,V> mkShortRight(int diffBit, Node<K,V> left, K k, V v) {
             return new MShortRightNode<K,V>(diffBit, left, k, v);
         }
-        public Internal<K,V> mkShortLeft(int diffBit, K k, V v, Node<K,V> right) {
+        public Node<K,V> mkShortLeft(int diffBit, K k, V v, Node<K,V> right) {
             return new MShortLeftNode<K,V>(diffBit, k, v, right);
         }
-        public Internal<K,V> mkTall(int diffBit, Node<K,V> left, Node<K,V> right) {
+        public Node<K,V> mkTall(int diffBit, Node<K,V> left, Node<K,V> right) {
             return new MTallNode<K,V>(diffBit, left, right);
         }
-        public External<K,V> mkLeaf(K key, V val) {
+        public Node<K,V> mkLeaf(K key, V val) {
             return new LeafNode<K,V>(key, val);
         }
     }
@@ -122,14 +122,14 @@ public final class MCritBitTree<K,V> extends AbstractCritBitTree<K,V> {
             return;
         }
         if(!root.isInternal()) {
-            int diffBit = ctx().chk.firstDiff(key, ((External<K,V>)root).key());
+            int diffBit = ctx().chk.firstDiff(key, root.key());
             root = root.insert(diffBit, key, val, ctx());
             return;
         }
 
-        SearchResult<K,V> sr = search((Internal<K,V>)root, key);
+        final SearchResult<K,V> sr = search(root, key);
 
-        int diffBit = ctx().chk.firstDiff(key, sr.compKey(ctx()));
+        final int diffBit = ctx().chk.firstDiff(key, sr.compKey(ctx()));
         if(sr.parent == null) {
             root = root.insert(diffBit, key, val, ctx());
             return;
@@ -144,8 +144,8 @@ public final class MCritBitTree<K,V> extends AbstractCritBitTree<K,V> {
             }
         }
 
-        Internal<K,V> prev = (Internal<K,V>)root;
-        Internal<K,V> current = (Internal<K,V>)prev.nextNode(key, ctx());
+        Node<K,V> prev = root;
+        Node<K,V> current = prev.nextNode(key, ctx());
         for(;;) {
             if(diffBit < current.bit()) {
                 if(ctx().chk.isSet(key, prev.bit())) {
@@ -156,7 +156,7 @@ public final class MCritBitTree<K,V> extends AbstractCritBitTree<K,V> {
                 return;
             } else {
                 prev = current;
-                current = (Internal<K,V>)current.nextNode(key, ctx());
+                current = current.nextNode(key, ctx());
             }
         }
     }

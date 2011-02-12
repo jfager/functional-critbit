@@ -83,19 +83,19 @@ public final class CritBitTree<K,V> extends AbstractCritBitTree<K,V> {
     }
 
     static final class ImmutableNodeFactory<K,V> implements NodeFactory<K,V> {
-        public Internal<K,V> mkShortBoth(int diffBit, K lk, V lv, K rk, V rv) {
+        public Node<K,V> mkShortBoth(int diffBit, K lk, V lv, K rk, V rv) {
             return new ShortBothNode<K,V>(diffBit, lk, lv, rk, rv);
         }
-        public Internal<K,V> mkShortRight(int diffBit, Node<K,V> left, K k, V v) {
+        public Node<K,V> mkShortRight(int diffBit, Node<K,V> left, K k, V v) {
             return new ShortRightNode<K,V>(diffBit, left, k, v);
         }
-        public Internal<K,V> mkShortLeft(int diffBit, K k, V v, Node<K,V> right) {
+        public Node<K,V> mkShortLeft(int diffBit, K k, V v, Node<K,V> right) {
             return new ShortLeftNode<K,V>(diffBit, k, v, right);
         }
-        public Internal<K,V> mkTall(int diffBit, Node<K,V> left, Node<K,V> right) {
+        public Node<K,V> mkTall(int diffBit, Node<K,V> left, Node<K,V> right) {
             return new TallNode<K,V>(diffBit, left, right);
         }
-        public External<K,V> mkLeaf(K key, V val) {
+        public Node<K,V> mkLeaf(K key, V val) {
             return new LeafNode<K,V>(key, val);
         }
     }
@@ -119,10 +119,10 @@ public final class CritBitTree<K,V> extends AbstractCritBitTree<K,V> {
         }
         K compKey;
         if(root().isInternal()) {
-            SearchResult<K,V> sr = search((Internal<K,V>)root(), key);
+            SearchResult<K,V> sr = search(root(), key);
             compKey = sr.compKey(ctx());
         } else {
-            compKey = ((External<K,V>)root()).key();
+            compKey = root().key();
         }
 
         int diffBit = ctx().chk.firstDiff(key, compKey);
