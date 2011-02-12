@@ -1,5 +1,7 @@
 package io.prelink.critbit;
 
+import org.ardverk.collection.KeyAnalyzer;
+
 /**
  * Like immutable.CritBitTree, except w/ nodes that are mutable where it makes
  * sense, hypothesis being we can cut down on garbage collection a bit.
@@ -105,9 +107,9 @@ public final class MCritBitTree<K,V> extends AbstractCritBitTree<K,V> {
     private Node<K,V> root;
     private int size;
 
-    public MCritBitTree(BitChecker<K> bitChecker) {
+    public MCritBitTree(KeyAnalyzer<K> analyzer) {
         this(null,
-             new Context<K,V>(bitChecker, new MutableNodeFactory<K,V>()));
+             new Context<K,V>(analyzer, new MutableNodeFactory<K,V>()));
     }
 
     private MCritBitTree(Node<K,V> root, Context<K,V> ctx) {
@@ -124,7 +126,7 @@ public final class MCritBitTree<K,V> extends AbstractCritBitTree<K,V> {
             return null;
         }
         if(!root.isInternal()) {
-            int diffBit = ctx().chk.firstDiff(key, root.key());
+            int diffBit = ctx().chk.bitIndex(key, root.key());
             V oldVal = root.value();
             root = root.insert(diffBit, key, val, ctx());
             if(diffBit >= 0) {
@@ -136,7 +138,7 @@ public final class MCritBitTree<K,V> extends AbstractCritBitTree<K,V> {
         }
 
         final SearchResult<K,V> sr = search(root, key);
-        final int diffBit = ctx().chk.firstDiff(key, sr.key(ctx()));
+        final int diffBit = ctx().chk.bitIndex(key, sr.key(ctx()));
         V out = null;
         if(diffBit >= 0) {
             out = sr.value(ctx());
@@ -161,7 +163,7 @@ public final class MCritBitTree<K,V> extends AbstractCritBitTree<K,V> {
         Node<K,V> current = prev.nextNode(key, ctx());
         for(;;) {
             if(diffBit < current.bit()) {
-                if(ctx().chk.isSet(key, prev.bit())) {
+                if(ctx().chk.isBitSet(key, prev.bit())) {
                     prev.setRight(diffBit, key, val, ctx());
                 } else {
                     prev.setLeft(diffBit, key, val, ctx());

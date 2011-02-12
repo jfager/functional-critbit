@@ -1,5 +1,7 @@
 package io.prelink.critbit;
 
+import org.ardverk.collection.KeyAnalyzer;
+
 /**
  * An OO/Functional Java crit-bit tree, inspired by
  * djb (http://cr.yp.to/critbit.html),
@@ -103,9 +105,9 @@ public final class CritBitTree<K,V> extends AbstractCritBitTree<K,V> {
     private final Node<K,V> root;
     private final int size;
 
-    public CritBitTree(BitChecker<K> bitChecker) {
+    public CritBitTree(KeyAnalyzer<K> analyzer) {
         this(null, 0,
-             new Context<K,V>(bitChecker, new ImmutableNodeFactory<K,V>()));
+             new Context<K,V>(analyzer, new ImmutableNodeFactory<K,V>()));
     }
 
     private CritBitTree(Node<K,V> root, int size, Context<K,V> context) {
@@ -128,7 +130,7 @@ public final class CritBitTree<K,V> extends AbstractCritBitTree<K,V> {
             compKey = root().key();
         }
 
-        int diffBit = ctx().chk.firstDiff(key, compKey);
+        int diffBit = ctx().chk.bitIndex(key, compKey);
         return new CritBitTree<K,V>(root().insert(diffBit, key, val, ctx()),
                                     (diffBit < 0) ? size : size + 1,
                                     ctx());

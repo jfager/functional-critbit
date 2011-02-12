@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import org.ardverk.collection.KeyAnalyzer;
+
 
 /**
  * An OO/Functional Java crit-bit tree, inspired by
@@ -23,9 +25,9 @@ abstract class AbstractCritBitTree<K,V> {
     }
 
     static class Context<K,V> {
-        final BitChecker<K> chk;
+        final KeyAnalyzer<K> chk;
         final NodeFactory<K,V> nf;
-        Context(BitChecker<K> chk, NodeFactory<K,V> nf) {
+        Context(KeyAnalyzer<K> chk, NodeFactory<K,V> nf) {
             this.chk = chk;
             this.nf = nf;
         }
@@ -110,13 +112,13 @@ abstract class AbstractCritBitTree<K,V> {
 
         public final Node<K,V> insert(int diffBit, K k, V v, Context<K,V> ctx) {
             if(diffBit >= 0 && diffBit < bit()) {
-                if(ctx.chk.isSet(k, diffBit)) {
+                if(ctx.chk.isBitSet(k, diffBit)) {
                     return ctx.nf.mkShortRight(diffBit, this, k, v);
                 } else {
                     return ctx.nf.mkShortLeft(diffBit, k, v, this);
                 }
             } else {
-                if(ctx.chk.isSet(k, bit())) {
+                if(ctx.chk.isBitSet(k, bit())) {
                     return setRight(diffBit, k, v, ctx);
                 } else {
                     return setLeft(diffBit, k, v, ctx);
@@ -125,8 +127,8 @@ abstract class AbstractCritBitTree<K,V> {
         }
 
         public final Direction next(K key, Context<K,V> ctx) {
-            return ctx.chk.isSet(key, bit()) ? Direction.RIGHT
-                                             : Direction.LEFT;
+            return ctx.chk.isBitSet(key, bit()) ? Direction.RIGHT
+                                                : Direction.LEFT;
         }
 
         public final Node<K,V> nextNode(K key, Context<K,V> ctx) {
@@ -142,7 +144,7 @@ abstract class AbstractCritBitTree<K,V> {
                                                    K newKey, V newVal,
                                                    K oldKey, V oldVal,
                                                    Context<K,V> ctx) {
-            boolean newGoesRight = ctx.chk.isSet(newKey, diffBit);
+            boolean newGoesRight = ctx.chk.isBitSet(newKey, diffBit);
             K rKey = newGoesRight ? newKey : oldKey;
             V rVal = newGoesRight ? newVal : oldVal;
             K lKey = newGoesRight ? oldKey : newKey;
@@ -164,7 +166,7 @@ abstract class AbstractCritBitTree<K,V> {
             if(diffBit < 0) {
                 return ctx.nf.mkLeaf(key, val);
             }
-            else if(ctx.chk.isSet(key, diffBit)) { //new key goes right
+            else if(ctx.chk.isBitSet(key, diffBit)) { //new key goes right
                 return ctx.nf.mkShortBoth(diffBit, this.key, this.value, key, val);
             } else { //new key goes left
                 return ctx.nf.mkShortBoth(diffBit, key, val, this.key, this.value);
@@ -299,7 +301,7 @@ abstract class AbstractCritBitTree<K,V> {
             return Collections.singletonList(root().value());
         }
 
-        int keyLen = ctx.chk.bitLength(key);
+        int keyLen = ctx.chk.lengthInBits(key);
         Node<K,V> current = root();
         Node<K,V> top = current;
         while(current.isInternal()) {
@@ -315,7 +317,7 @@ abstract class AbstractCritBitTree<K,V> {
                 top = current;
             }
         }
-        if(!ctx.chk.startsWith(current.key() , key)) {
+        if(!ctx.chk.isPrefix(current.key() , key)) {
             return Collections.emptyList();
         } else {
             List<V> out = new ArrayList<V>();
