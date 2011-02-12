@@ -1,21 +1,20 @@
 package io.prelink.critbit;
 
-import io.prelink.critbit.CritBitTree;
-import io.prelink.critbit.MCritBitTree;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
+import java.util.TreeMap;
 
 import org.apache.commons.lang.RandomStringUtils;
 import org.apache.commons.lang.math.RandomUtils;
+import org.ardverk.collection.StringKeyAnalyzer;
 
 //import org.ardverk.collection.PatriciaTrie;
 //import org.ardverk.collection.StringKeyAnalyzer;
 
 public class PatriciaTrieTest {
     private static final int WARMUPS = 1000;
-    private static final int ITERS = 50000;
+    private static final int ITERS = 30000;
     private static final int SEED = 42;
 
     private static interface Putter {
@@ -55,7 +54,7 @@ public class PatriciaTrieTest {
         //tracking the current FCB.
         private CritBitTree<String,String> fcb;
         public FCBFlipper() {
-            this.fcb = new CritBitTree<String, String>(new StringBitChecker());
+            this.fcb = new CritBitTree<String, String>(StringKeyAnalyzer.INSTANCE);
         }
         public void put(String key, String val) {
             this.fcb = fcb.put(key, val);
@@ -77,6 +76,12 @@ public class PatriciaTrieTest {
             public void put(String k, String v) { pshm.put(k, v); }
         });
 
+        final Map<String, String> tm = new TreeMap<String, String>();
+        putTest(new Putter() {
+            public String name() { return "TreeMap"; }
+            public void put(String k, String v) { tm.put(k, v); }
+        });
+
         final FCBFlipper fcb = new FCBFlipper();
         putTest(new Putter() {
             public String name() { return "Functional Crit Bit"; }
@@ -84,7 +89,7 @@ public class PatriciaTrieTest {
         });
 
         final MCritBitTree<String, String> mcb =
-            new MCritBitTree<String, String>(new StringBitChecker());
+            new MCritBitTree<String, String>(StringKeyAnalyzer.INSTANCE);
         putTest(new Putter() {
             public String name() { return "Mutable Crit Bit"; }
             public void put(String k, String v) { mcb.put(k, v); }
@@ -105,6 +110,7 @@ public class PatriciaTrieTest {
         //Added to avoid garbage collection.
         System.out.println(hm);
         System.out.println(pshm);
+        System.out.println(tm);
         System.out.println(fcb);
         System.out.println(mcb);
 //      System.out.println(ptrie);
