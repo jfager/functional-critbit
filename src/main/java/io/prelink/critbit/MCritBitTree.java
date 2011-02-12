@@ -103,6 +103,7 @@ public final class MCritBitTree<K,V> extends AbstractCritBitTree<K,V> {
     }
 
     private Node<K,V> root;
+    private int size;
 
     public MCritBitTree(BitChecker<K> bitChecker) {
         this(null,
@@ -119,17 +120,20 @@ public final class MCritBitTree<K,V> extends AbstractCritBitTree<K,V> {
     public void put(K key, V val) {
         if(root == null) {
             root = ctx().nf.mkLeaf(key, val);
+            size++;
             return;
         }
         if(!root.isInternal()) {
             int diffBit = ctx().chk.firstDiff(key, root.key());
             root = root.insert(diffBit, key, val, ctx());
+            if(diffBit >= 0) size++;
             return;
         }
 
         final SearchResult<K,V> sr = search(root, key);
-
         final int diffBit = ctx().chk.firstDiff(key, sr.compKey(ctx()));
+        if(diffBit >= 0) size++;
+
         if(sr.parent == null) {
             root = root.insert(diffBit, key, val, ctx());
             return;
@@ -159,6 +163,10 @@ public final class MCritBitTree<K,V> extends AbstractCritBitTree<K,V> {
                 current = current.nextNode(key, ctx());
             }
         }
+    }
+
+    public int size() {
+        return size;
     }
 
 }

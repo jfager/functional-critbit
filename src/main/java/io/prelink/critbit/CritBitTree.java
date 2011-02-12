@@ -101,21 +101,24 @@ public final class CritBitTree<K,V> extends AbstractCritBitTree<K,V> {
     }
 
     private final Node<K,V> root;
+    private final int size;
 
     public CritBitTree(BitChecker<K> bitChecker) {
-        this(null, new Context<K,V>(bitChecker, new ImmutableNodeFactory<K,V>()));
+        this(null, 0,
+             new Context<K,V>(bitChecker, new ImmutableNodeFactory<K,V>()));
     }
 
-    private CritBitTree(Node<K,V> root, Context<K,V> context) {
+    private CritBitTree(Node<K,V> root, int size, Context<K,V> context) {
         super(context);
         this.root = root;
+        this.size = size;
     }
 
     Node<K,V> root() { return root; }
 
     public CritBitTree<K,V> put(K key, V val) {
         if(root() == null) {
-            return new CritBitTree<K,V>(ctx().nf.mkLeaf(key, val), ctx());
+            return new CritBitTree<K,V>(ctx().nf.mkLeaf(key, val), 1, ctx());
         }
         K compKey;
         if(root().isInternal()) {
@@ -126,7 +129,11 @@ public final class CritBitTree<K,V> extends AbstractCritBitTree<K,V> {
         }
 
         int diffBit = ctx().chk.firstDiff(key, compKey);
-        return new CritBitTree<K,V>(root().insert(diffBit, key, val, ctx()), ctx());
+        return new CritBitTree<K,V>(root().insert(diffBit, key, val, ctx()),
+                                    (diffBit < 0) ? size : size + 1,
+                                    ctx());
     }
+
+    public int size() { return size; }
 
 }

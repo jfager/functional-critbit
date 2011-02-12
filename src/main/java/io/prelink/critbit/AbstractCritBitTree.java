@@ -287,6 +287,9 @@ abstract class AbstractCritBitTree<K,V> {
         if(root() == null) {
             return Collections.emptyList();
         }
+        if(!root().isInternal()) {
+            return Collections.singletonList(root().value());
+        }
 
         int keyLen = ctx.chk.bitLength(key);
         Node<K,V> current = root();
@@ -321,4 +324,6 @@ abstract class AbstractCritBitTree<K,V> {
             list.add(top.value());
         }
     }
+
+    public abstract int size();
 }
