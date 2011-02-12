@@ -231,12 +231,20 @@ abstract class AbstractCritBitTree<K,V> {
             this.result = result;
             this.rDirection = rDirection;
         }
-        K compKey(Context<K,V> ctx) {
+        K key(Context<K,V> ctx) {
             switch(rDirection) {
             case LEFT:
                 return result.left(ctx).key();
             default: //case RIGHT:
                 return result.right(ctx).key();
+            }
+        }
+        V value(Context<K,V> ctx) {
+            switch(rDirection) {
+            case LEFT:
+                return result.left(ctx).value();
+            default: //case RIGHT:
+                return result.right(ctx).value();
             }
         }
     }

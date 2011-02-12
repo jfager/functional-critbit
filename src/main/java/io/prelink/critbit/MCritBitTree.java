@@ -117,34 +117,43 @@ public final class MCritBitTree<K,V> extends AbstractCritBitTree<K,V> {
 
     Node<K,V> root() { return root; }
 
-    public void put(K key, V val) {
+    public V put(K key, V val) {
         if(root == null) {
             root = ctx().nf.mkLeaf(key, val);
             size++;
-            return;
+            return null;
         }
         if(!root.isInternal()) {
             int diffBit = ctx().chk.firstDiff(key, root.key());
+            V oldVal = root.value();
             root = root.insert(diffBit, key, val, ctx());
-            if(diffBit >= 0) size++;
-            return;
+            if(diffBit >= 0) {
+                size++;
+                return null;
+            } else {
+                return oldVal;
+            }
         }
 
         final SearchResult<K,V> sr = search(root, key);
-        final int diffBit = ctx().chk.firstDiff(key, sr.compKey(ctx()));
-        if(diffBit >= 0) size++;
+        final int diffBit = ctx().chk.firstDiff(key, sr.key(ctx()));
+        V out = null;
+        if(diffBit >= 0) {
+            out = sr.value(ctx());
+            size++;
+        }
 
         if(sr.parent == null) {
             root = root.insert(diffBit, key, val, ctx());
-            return;
+            return out;
         } else if(diffBit < 0 || diffBit >= sr.parent.bit()) {
             switch(sr.pDirection) {
             case LEFT:
                 sr.parent.setLeft(diffBit, key, val, ctx());
-                return;
+                return out;
             case RIGHT:
                 sr.parent.setRight(diffBit, key, val, ctx());
-                return;
+                return out;
             }
         }
 
@@ -157,7 +166,7 @@ public final class MCritBitTree<K,V> extends AbstractCritBitTree<K,V> {
                 } else {
                     prev.setLeft(diffBit, key, val, ctx());
                 }
-                return;
+                return out;
             } else {
                 prev = current;
                 current = current.nextNode(key, ctx());

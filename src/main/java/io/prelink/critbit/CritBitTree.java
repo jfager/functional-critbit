@@ -123,7 +123,7 @@ public final class CritBitTree<K,V> extends AbstractCritBitTree<K,V> {
         K compKey;
         if(root().isInternal()) {
             SearchResult<K,V> sr = search(root(), key);
-            compKey = sr.compKey(ctx());
+            compKey = sr.key(ctx());
         } else {
             compKey = root().key();
         }
