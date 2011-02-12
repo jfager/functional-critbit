@@ -1,6 +1,7 @@
 package io.prelink.critbit;
 
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -14,9 +15,11 @@ import org.ardverk.collection.KeyAnalyzer;
  * Adam Langley (https://github.com/agl/critbit),
  * and Okasaki (http://www.eecs.usma.edu/webs/people/okasaki/pubs.html)
  */
-abstract class AbstractCritBitTree<K,V> {
+abstract class AbstractCritBitTree<K,V> implements Serializable {
 
-    static interface NodeFactory<K,V> {
+    static final long serialVersionUID = 20110212L;
+
+    static interface NodeFactory<K,V> extends Serializable {
         Node<K,V> mkShortBoth(int diffBit, K lk, V lv, K rk, V rv);
         Node<K,V> mkShortRight(int diffBit, Node<K,V> left, K k, V v);
         Node<K,V> mkShortLeft(int diffBit, K k, V v, Node<K,V> right);
@@ -24,7 +27,8 @@ abstract class AbstractCritBitTree<K,V> {
         Node<K,V> mkLeaf(K key, V val);
     }
 
-    static class Context<K,V> {
+    static class Context<K,V> implements Serializable {
+        private static final long serialVersionUID = 20110212L;
         final KeyAnalyzer<K> chk;
         final NodeFactory<K,V> nf;
         Context(KeyAnalyzer<K> chk, NodeFactory<K,V> nf) {
@@ -33,7 +37,7 @@ abstract class AbstractCritBitTree<K,V> {
         }
     }
 
-    static interface Node<K,V> {
+    static interface Node<K,V> extends Serializable {
         //Everybody implements these.
         Node<K,V> insert(int diffBit, K key, V val, Context<K,V> ctx);
         Node<K,V> remove(K key, Context<K,V> ctx, boolean force);
@@ -60,6 +64,7 @@ abstract class AbstractCritBitTree<K,V> {
     }
 
     static abstract class BaseNode<K,V> implements Node<K,V> {
+        private static final long serialVersionUID = 20110212L;
         public Node<K, V> insert(int diffBit, K key, V val, Context<K, V> ctx) {
             throw new UnsupportedOperationException();
         }
@@ -99,8 +104,9 @@ abstract class AbstractCritBitTree<K,V> {
     }
 
     static abstract class AbstractInternal<K,V> extends BaseNode<K,V> {
-        private final int bit;
+        private static final long serialVersionUID = 20110212L;
 
+        private final int bit;
         AbstractInternal(int bit) {
             this.bit = bit;
         }
@@ -163,6 +169,7 @@ abstract class AbstractCritBitTree<K,V> {
     }
 
     static final class LeafNode<K,V> extends BaseNode<K,V> {
+        private static final long serialVersionUID = 20110212L;
         private final K key;
         private final V value;
         public LeafNode(K key, V value) {
@@ -192,6 +199,7 @@ abstract class AbstractCritBitTree<K,V> {
     }
 
     static final class ShortBothNode<K,V> extends AbstractInternal<K,V> {
+        private static final long serialVersionUID = 20110212L;
         private final K leftKey;
         private final V leftVal;
         private final K rightKey;

@@ -10,7 +10,10 @@ import org.ardverk.collection.KeyAnalyzer;
  */
 public final class CritBitTree<K,V> extends AbstractCritBitTree<K,V> {
 
+    private static final long serialVersionUID = 20110212L;
+
     static final class ShortLeftNode<K,V> extends AbstractInternal<K,V> {
+        private static final long serialVersionUID = 20110212L;
         private final K leftKey;
         private final V leftVal;
         private final Node<K,V> right;
@@ -54,6 +57,7 @@ public final class CritBitTree<K,V> extends AbstractCritBitTree<K,V> {
         public boolean hasExternalRight() { return false; }
     }
     static final class ShortRightNode<K,V> extends AbstractInternal<K,V> {
+        private static final long serialVersionUID = 20110212L;
         private final Node<K,V> left;
         private final K rightKey;
         private final V rightVal;
@@ -97,6 +101,7 @@ public final class CritBitTree<K,V> extends AbstractCritBitTree<K,V> {
         public boolean hasExternalRight() { return true; }
     }
     static final class TallNode<K,V> extends AbstractInternal<K,V> {
+        private static final long serialVersionUID = 20110212L;
         private final Node<K,V> left;
         private final Node<K,V> right;
         public TallNode(int bit, Node<K,V> left, Node<K,V> right) {
@@ -141,6 +146,7 @@ public final class CritBitTree<K,V> extends AbstractCritBitTree<K,V> {
     }
 
     static final class ImmutableNodeFactory<K,V> implements NodeFactory<K,V> {
+        private static final long serialVersionUID = 20110212L;
         public Node<K,V> mkShortBoth(int diffBit, K lk, V lv, K rk, V rv) {
             return new ShortBothNode<K,V>(diffBit, lk, lv, rk, rv);
         }
