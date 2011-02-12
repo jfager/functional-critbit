@@ -139,10 +139,12 @@ public final class MCritBitTree<K,V> extends AbstractCritBitTree<K,V> {
 
         final SearchResult<K,V> sr = search(root, key);
         final int diffBit = ctx().chk.bitIndex(key, sr.key(ctx()));
-        V out = null;
+        final V out;
         if(diffBit >= 0) {
-            out = sr.value(ctx());
+            out = null;
             size++;
+        } else {
+            out = sr.value(ctx());
         }
 
         if(sr.parent == null) {
