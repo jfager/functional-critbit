@@ -34,8 +34,9 @@ abstract class AbstractCritBitTree<K,V> {
     }
 
     static interface Node<K,V> {
+        //Everybody implements these.
         Node<K,V> insert(int diffBit, K key, V val, Context<K,V> ctx);
-
+        Node<K,V> remove(K key, Context<K,V> ctx, boolean force);
         boolean isInternal();
 
         //Should only be called for internal nodes.
@@ -62,29 +63,25 @@ abstract class AbstractCritBitTree<K,V> {
         public Node<K, V> insert(int diffBit, K key, V val, Context<K, V> ctx) {
             throw new UnsupportedOperationException();
         }
-        //Everything should implement this.
-        //public boolean isInternal() {
-        //    throw new UnsupportedOperationException();
-        //}
         public int bit() {
             throw new UnsupportedOperationException();
         }
         public Direction next(K key, Context<K, V> ctx) {
             throw new UnsupportedOperationException();
         }
-        public Node<K, V> nextNode(K key, Context<K, V> ctx) {
+        public Node<K,V> nextNode(K key, Context<K, V> ctx) {
             throw new UnsupportedOperationException();
         }
-        public Node<K, V> left(Context<K, V> ctx) {
+        public Node<K,V> left(Context<K, V> ctx) {
             throw new UnsupportedOperationException();
         }
-        public Node<K, V> right(Context<K, V> ctx) {
+        public Node<K,V> right(Context<K, V> ctx) {
             throw new UnsupportedOperationException();
         }
-        public Node<K, V> setLeft(int diffBit, K key, V val, Context<K, V> ctx) {
+        public Node<K,V> setLeft(int diffBit, K key, V val, Context<K, V> ctx) {
             throw new UnsupportedOperationException();
         }
-        public Node<K, V> setRight(int diffBit, K key, V val, Context<K, V> ctx) {
+        public Node<K,V> setRight(int diffBit, K key, V val, Context<K, V> ctx) {
             throw new UnsupportedOperationException();
         }
         public boolean hasExternalLeft() {
@@ -126,6 +123,15 @@ abstract class AbstractCritBitTree<K,V> {
             }
         }
 
+        public Node<K,V> remove(K key, Context<K,V> ctx, boolean force) {
+            switch(next(key, ctx)) {
+            case LEFT:
+                return removeLeft(key, ctx, force);
+            default:
+                return removeRight(key, ctx, force);
+            }
+        }
+
         public final Direction next(K key, Context<K,V> ctx) {
             return ctx.chk.isBitSet(key, bit()) ? Direction.RIGHT
                                                 : Direction.LEFT;
@@ -139,6 +145,9 @@ abstract class AbstractCritBitTree<K,V> {
         }
 
         public final boolean isInternal() { return true; }
+
+        protected abstract Node<K,V> removeLeft(K key, Context<K,V> ctx, boolean force);
+        protected abstract Node<K,V> removeRight(K key, Context<K,V> ctx, boolean force);
 
         protected final Node<K,V> mkShortBothChild(int diffBit,
                                                    K newKey, V newVal,
@@ -173,6 +182,13 @@ abstract class AbstractCritBitTree<K,V> {
             }
         }
         public boolean isInternal() { return false; }
+        public Node<K,V> remove(K key, Context<K,V> ctx, boolean force) {
+            if(force || ctx.chk.bitIndex(key, this.key) < 0) {
+                return null;
+            } else {
+                return this;
+            }
+        }
     }
 
     static final class ShortBothNode<K,V> extends AbstractInternal<K,V> {
@@ -202,6 +218,20 @@ abstract class AbstractCritBitTree<K,V> {
             }
             Node<K,V> newRight = mkShortBothChild(diffBit, key, val, rightKey, rightVal, ctx);
             return ctx.nf.mkShortLeft(bit(), leftKey, leftVal, newRight);
+        }
+        protected Node<K,V> removeLeft(K key, Context<K,V> ctx, boolean force) {
+            if(force || ctx.chk.bitIndex(key, this.leftKey) < 0) {
+                return ctx.nf.mkLeaf(rightKey, rightVal);
+            } else {
+                return this;
+            }
+        }
+        protected Node<K,V> removeRight(K key, Context<K,V> ctx, boolean force) {
+            if(force || ctx.chk.bitIndex(key, this.rightKey) < 0) {
+                return ctx.nf.mkLeaf(leftKey, leftVal);
+            } else {
+                return this;
+            }
         }
         public boolean hasExternalLeft() { return true; }
         public boolean hasExternalRight() { return true; }
@@ -336,4 +366,5 @@ abstract class AbstractCritBitTree<K,V> {
     }
 
     public abstract int size();
+    public boolean isEmpty() { return size() == 0; }
 }

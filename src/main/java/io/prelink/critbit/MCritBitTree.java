@@ -34,6 +34,21 @@ public final class MCritBitTree<K,V> extends AbstractCritBitTree<K,V> {
         }
         public boolean hasExternalLeft() { return true; }
         public boolean hasExternalRight() { return false; }
+        protected Node<K,V> removeLeft(K key, Context<K,V> ctx, boolean force) {
+            if(force || ctx.chk.bitIndex(key, this.leftKey) < 0) {
+                return right;
+            }
+            return this;
+        }
+        protected Node<K,V> removeRight(K key, Context<K,V> ctx, boolean force) {
+            Node<K,V> newRight = right.remove(key, ctx, force);
+            if(newRight.isInternal()) {
+                this.right = newRight;
+                return this;
+            } else {
+                return ctx.nf.mkShortBoth(bit(), leftKey, leftVal, newRight.key(), newRight.value());
+            }
+        }
     }
 
     static final class MShortRightNode<K,V> extends AbstractInternal<K,V> {
@@ -60,6 +75,21 @@ public final class MCritBitTree<K,V> extends AbstractCritBitTree<K,V> {
             Node<K,V> newRight = mkShortBothChild(diffBit, key, val, rightKey, rightVal, ctx);
             return ctx.nf.mkTall(bit(), left, newRight);
         }
+        protected Node<K,V> removeLeft(K key, Context<K,V> ctx, boolean force) {
+            Node<K,V> newLeft = left.remove(key, ctx, force);
+            if(newLeft.isInternal()) {
+                this.left = newLeft;
+                return this;
+            } else {
+                return ctx.nf.mkShortBoth(bit(), newLeft.key(), newLeft.value(), rightKey, rightVal);
+            }
+        }
+        protected Node<K,V> removeRight(K key, Context<K,V> ctx, boolean force) {
+            if(force || ctx.chk.bitIndex(key, this.rightKey) < 0) {
+                return left;
+            }
+            return this;
+        }
         public boolean hasExternalLeft() { return false; }
         public boolean hasExternalRight() { return true; }
     }
@@ -81,6 +111,24 @@ public final class MCritBitTree<K,V> extends AbstractCritBitTree<K,V> {
         public Node<K,V> setRight(int diffBit, K key, V val, Context<K,V> ctx) {
             this.right = right.insert(diffBit, key, val, ctx);
             return this;
+        }
+        protected Node<K,V> removeLeft(K key, Context<K,V> ctx, boolean force) {
+            Node<K,V> newLeft = left.remove(key, ctx, force);
+            if(newLeft.isInternal()) {
+                this.left = newLeft;
+                return this;
+            } else {
+                return ctx.nf.mkShortLeft(bit(), newLeft.key(), newLeft.value(), right);
+            }
+        }
+        protected Node<K,V> removeRight(K key, Context<K,V> ctx, boolean force) {
+            Node<K,V> newRight = right.remove(key, ctx, force);
+            if(newRight.isInternal()) {
+                this.right = newRight;
+                return this;
+            } else {
+                return ctx.nf.mkShortRight(bit(), left, newRight.key(), newRight.value());
+            }
         }
         public boolean hasExternalLeft() { return false; }
         public boolean hasExternalRight() { return false; }
@@ -105,7 +153,7 @@ public final class MCritBitTree<K,V> extends AbstractCritBitTree<K,V> {
     }
 
     private Node<K,V> root;
-    private int size;
+    private int size = 0;
 
     public MCritBitTree(KeyAnalyzer<K> analyzer) {
         this(null,
@@ -161,6 +209,11 @@ public final class MCritBitTree<K,V> extends AbstractCritBitTree<K,V> {
             }
         }
 
+        if(diffBit < root.bit()) {
+            root = root.insert(diffBit, key, val, ctx());
+            return out;
+        }
+
         Node<K,V> prev = root;
         Node<K,V> current = prev.nextNode(key, ctx());
         for(;;) {
@@ -178,8 +231,40 @@ public final class MCritBitTree<K,V> extends AbstractCritBitTree<K,V> {
         }
     }
 
+    public V remove(K key) {
+        if(root == null) {
+            return null;
+        }
+        if(!root.isInternal()) {
+            if(ctx().chk.bitIndex(key, root.key()) < 0) {
+                V out = root.value();
+                root = null;
+                size--;
+                return out;
+            } else {
+                return null;
+            }
+        }
+
+        SearchResult<K,V> sr = search(root, key);
+        int diffBit = ctx().chk.bitIndex(key, sr.key(ctx()));
+        if(diffBit < 0) {
+            V out = sr.value(ctx());
+            sr.parent.remove(key, ctx(), true);
+            size--;
+            return out;
+        } else {
+            return null;
+        }
+
+    }
+
     public int size() {
         return size;
     }
 
+    public void clear() {
+        this.root = null;
+        this.size = 0;
+    }
 }
