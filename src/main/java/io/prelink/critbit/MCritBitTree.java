@@ -1,10 +1,15 @@
 package io.prelink.critbit;
 
+import java.util.Map;
+
+import org.ardverk.collection.Cursor;
+import org.ardverk.collection.Cursor.Decision;
 import org.ardverk.collection.KeyAnalyzer;
 
 /**
  * Like immutable.CritBitTree, except w/ nodes that are mutable where it makes
- * sense, hypothesis being we can cut down on garbage collection a bit.
+ * sense, hypothesis being we can improve performance and cut down on garbage
+ * collection a bit.
  */
 public final class MCritBitTree<K,V> extends AbstractCritBitTree<K,V> {
 
@@ -49,7 +54,7 @@ public final class MCritBitTree<K,V> extends AbstractCritBitTree<K,V> {
                 this.right = newRight;
                 return this;
             } else {
-                return ctx.nf.mkShortBoth(bit(), leftKey, leftVal, newRight.key(), newRight.value());
+                return ctx.nf.mkShortBoth(bit(), leftKey, leftVal, newRight.getKey(), newRight.getValue());
             }
         }
     }
@@ -85,7 +90,7 @@ public final class MCritBitTree<K,V> extends AbstractCritBitTree<K,V> {
                 this.left = newLeft;
                 return this;
             } else {
-                return ctx.nf.mkShortBoth(bit(), newLeft.key(), newLeft.value(), rightKey, rightVal);
+                return ctx.nf.mkShortBoth(bit(), newLeft.getKey(), newLeft.getValue(), rightKey, rightVal);
             }
         }
         protected Node<K,V> removeRight(K key, Context<K,V> ctx, boolean force) {
@@ -123,7 +128,7 @@ public final class MCritBitTree<K,V> extends AbstractCritBitTree<K,V> {
                 this.left = newLeft;
                 return this;
             } else {
-                return ctx.nf.mkShortLeft(bit(), newLeft.key(), newLeft.value(), right);
+                return ctx.nf.mkShortLeft(bit(), newLeft.getKey(), newLeft.getValue(), right);
             }
         }
         protected Node<K,V> removeRight(K key, Context<K,V> ctx, boolean force) {
@@ -132,7 +137,7 @@ public final class MCritBitTree<K,V> extends AbstractCritBitTree<K,V> {
                 this.right = newRight;
                 return this;
             } else {
-                return ctx.nf.mkShortRight(bit(), left, newRight.key(), newRight.value());
+                return ctx.nf.mkShortRight(bit(), left, newRight.getKey(), newRight.getValue());
             }
         }
         public boolean hasExternalLeft() { return false; }
@@ -180,8 +185,8 @@ public final class MCritBitTree<K,V> extends AbstractCritBitTree<K,V> {
             return null;
         }
         if(!root.isInternal()) {
-            int diffBit = ctx().chk.bitIndex(key, root.key());
-            V oldVal = root.value();
+            int diffBit = ctx().chk.bitIndex(key, root.getKey());
+            V oldVal = root.getValue();
             root = root.insert(diffBit, key, val, ctx());
             if(diffBit >= 0) {
                 size++;
@@ -237,13 +242,14 @@ public final class MCritBitTree<K,V> extends AbstractCritBitTree<K,V> {
         }
     }
 
-    public V remove(K key) {
+    public V remove(Object k) {
         if(root == null) {
             return null;
         }
+        final K key = cast(k);
         if(!root.isInternal()) {
-            if(ctx().chk.bitIndex(key, root.key()) < 0) {
-                V out = root.value();
+            if(ctx().chk.bitIndex(key, root.getKey()) < 0) {
+                V out = root.getValue();
                 root = null;
                 size--;
                 return out;
@@ -269,8 +275,65 @@ public final class MCritBitTree<K,V> extends AbstractCritBitTree<K,V> {
         return size;
     }
 
+    protected final Decision doTraverse(Node<K,V> top,
+                                        Cursor<? super K, ? super V> cursor) {
+        if(top.isInternal()) {
+            Decision d = doTraverse(top.left(ctx()), cursor);
+            switch(d) {
+            case REMOVE_AND_EXIT: //fall through
+            case EXIT:
+                return Decision.EXIT;
+            case REMOVE: //fall through
+            case CONTINUE:
+            default:
+                return doTraverse(top.right(ctx()), cursor);
+            }
+        } else {
+            Map.Entry<K,V> e = cast(top);
+            return cursor.select(e);
+        }
+    }
+
     public void clear() {
         this.root = null;
         this.size = 0;
+    }
+
+    public boolean containsKey(Object k) {
+        K key = cast(k);
+        final SearchResult<K,V> sr = search(root, key);
+        final int diffBit = ctx().chk.bitIndex(key, sr.key(ctx()));
+        return diffBit < 0;
+    }
+
+    private static class ContainsValueCursor<K,V> implements Cursor<K,V> {
+        private final V value;
+        private boolean outcome = false;
+        public ContainsValueCursor(V value) {
+            this.value = value;
+        }
+        public Decision select(Map.Entry<? extends K, ? extends V> entry) {
+            if(value.equals(entry.getValue())) {
+                outcome = true;
+                return Decision.EXIT;
+            }
+            return Decision.CONTINUE;
+        }
+        public boolean getOutcome() {
+            return outcome;
+        }
+    }
+
+    public boolean containsValue(Object v) {
+        V val = cast(v);
+        ContainsValueCursor<K,V> cvc = new ContainsValueCursor<K,V>(val);
+        traverse(cvc);
+        return cvc.getOutcome();
+    }
+
+    public void putAll(Map<? extends K, ? extends V> otherMap) {
+        for(Map.Entry<? extends K, ? extends V> me: otherMap.entrySet()) {
+            put(me.getKey(), me.getValue());
+        }
     }
 }

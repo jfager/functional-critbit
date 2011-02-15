@@ -1,5 +1,9 @@
 package io.prelink.critbit;
 
+import java.util.Map;
+
+import org.ardverk.collection.Cursor;
+import org.ardverk.collection.Cursor.Decision;
 import org.ardverk.collection.KeyAnalyzer;
 
 /**
@@ -50,7 +54,7 @@ public final class CritBitTree<K,V> extends AbstractCritBitTree<K,V> {
             if(newRight.isInternal()) {
                 return ctx.nf.mkShortLeft(bit(), leftKey, leftVal, newRight);
             } else {
-                return ctx.nf.mkShortBoth(bit(), leftKey, leftVal, newRight.key(), newRight.value());
+                return ctx.nf.mkShortBoth(bit(), leftKey, leftVal, newRight.getKey(), newRight.getValue());
             }
         }
         public boolean hasExternalLeft() { return true; }
@@ -88,7 +92,7 @@ public final class CritBitTree<K,V> extends AbstractCritBitTree<K,V> {
             if(newLeft.isInternal()) {
                 return ctx.nf.mkShortRight(bit(), newLeft, rightKey, rightVal);
             } else {
-                return ctx.nf.mkShortBoth(bit(), newLeft.key(), newLeft.value(), rightKey, rightVal);
+                return ctx.nf.mkShortBoth(bit(), newLeft.getKey(), newLeft.getValue(), rightKey, rightVal);
             }
         }
         protected Node<K,V> removeRight(K key, Context<K,V> ctx, boolean force) {
@@ -127,7 +131,7 @@ public final class CritBitTree<K,V> extends AbstractCritBitTree<K,V> {
             if(newLeft.isInternal()) {
                 return ctx.nf.mkTall(bit(), newLeft, right);
             } else {
-                return ctx.nf.mkShortLeft(bit(), newLeft.key(), newLeft.value(), right);
+                return ctx.nf.mkShortLeft(bit(), newLeft.getKey(), newLeft.getValue(), right);
             }
         }
         protected Node<K,V> removeRight(K key, Context<K,V> ctx, boolean force) {
@@ -138,7 +142,7 @@ public final class CritBitTree<K,V> extends AbstractCritBitTree<K,V> {
             if(newRight.isInternal()) {
                 return ctx.nf.mkTall(bit(), left, newRight);
             } else {
-                return ctx.nf.mkShortRight(bit(), left, newRight.key(), newRight.value());
+                return ctx.nf.mkShortRight(bit(), left, newRight.getKey(), newRight.getValue());
             }
         }
         public boolean hasExternalLeft() { return false; }
@@ -189,7 +193,7 @@ public final class CritBitTree<K,V> extends AbstractCritBitTree<K,V> {
             SearchResult<K,V> sr = search(root(), key);
             compKey = sr.key(ctx());
         } else {
-            compKey = root().key();
+            compKey = root().getKey();
         }
 
         int diffBit = ctx().chk.bitIndex(key, compKey);
@@ -207,6 +211,25 @@ public final class CritBitTree<K,V> extends AbstractCritBitTree<K,V> {
             return this;
         } else {
             return new CritBitTree<K,V>(removed, size - 1, ctx());
+        }
+    }
+
+    protected final Decision doTraverse(Node<K,V> top,
+                                        Cursor<? super K, ? super V> cursor) {
+        if(top.isInternal()) {
+            Decision d = doTraverse(top.left(ctx()), cursor);
+            switch(d) {
+            case REMOVE_AND_EXIT: //fall through
+            case EXIT:
+                return d;
+            case REMOVE: //fall through
+            case CONTINUE:
+            default:
+                return doTraverse(top.right(ctx()), cursor);
+            }
+        } else {
+            Map.Entry<K,V> e = cast(top);
+            return cursor.select(e);
         }
     }
 

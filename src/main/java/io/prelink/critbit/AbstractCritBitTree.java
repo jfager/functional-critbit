@@ -2,10 +2,10 @@ package io.prelink.critbit;
 
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.Map;
 
+import org.ardverk.collection.Cursor;
+import org.ardverk.collection.Cursor.Decision;
 import org.ardverk.collection.KeyAnalyzer;
 
 
@@ -55,8 +55,8 @@ abstract class AbstractCritBitTree<K,V> implements Serializable {
         boolean hasExternalRight();
 
         //Should only be called for external nodes.
-        K key();
-        V value();
+        K getKey();
+        V getValue();
     }
 
     static enum Direction {
@@ -95,10 +95,10 @@ abstract class AbstractCritBitTree<K,V> implements Serializable {
         public boolean hasExternalRight() {
             throw new UnsupportedOperationException();
         }
-        public K key() {
+        public K getKey() {
             throw new UnsupportedOperationException();
         }
-        public V value() {
+        public V getValue() {
             throw new UnsupportedOperationException();
         }
     }
@@ -168,7 +168,10 @@ abstract class AbstractCritBitTree<K,V> implements Serializable {
         }
     }
 
-    static final class LeafNode<K,V> extends BaseNode<K,V> {
+    static final class LeafNode<K,V>
+        extends BaseNode<K,V>
+        implements Map.Entry<K,V>
+    {
         private static final long serialVersionUID = 20110212L;
         private final K key;
         private final V value;
@@ -176,8 +179,11 @@ abstract class AbstractCritBitTree<K,V> implements Serializable {
             this.key = key;
             this.value = value;
         }
-        public K key() { return this.key; }
-        public V value() { return this.value; }
+        public K getKey() { return this.key; }
+        public V getValue() { return this.value; }
+        public V setValue(V arg0) {
+            throw new UnsupportedOperationException();
+        }
         public Node<K,V> insert(int diffBit, K key, V val, Context<K,V> ctx) {
             if(diffBit < 0) {
                 return ctx.nf.mkLeaf(key, val);
@@ -196,6 +202,7 @@ abstract class AbstractCritBitTree<K,V> implements Serializable {
                 return this;
             }
         }
+
     }
 
     static final class ShortBothNode<K,V> extends AbstractInternal<K,V> {
@@ -274,22 +281,22 @@ abstract class AbstractCritBitTree<K,V> implements Serializable {
         K key(Context<K,V> ctx) {
             switch(rDirection) {
             case LEFT:
-                return result.left(ctx).key();
+                return result.left(ctx).getKey();
             default: //case RIGHT:
-                return result.right(ctx).key();
+                return result.right(ctx).getKey();
             }
         }
         V value(Context<K,V> ctx) {
             switch(rDirection) {
             case LEFT:
-                return result.left(ctx).value();
+                return result.left(ctx).getValue();
             default: //case RIGHT:
-                return result.right(ctx).value();
+                return result.right(ctx).getValue();
             }
         }
     }
 
-    final SearchResult<K,V> search(Node<K,V> start, K key) {
+    final SearchResult<K,V> search(final Node<K,V> start, final K key) {
         Node<K,V> par = null;
         Direction parDirection = null;
         Node<K,V> cur = start;
@@ -320,23 +327,55 @@ abstract class AbstractCritBitTree<K,V> implements Serializable {
             return null;
         }
         if(!root().isInternal()) {
-            return root().value();
+            return root().getValue();
         }
         SearchResult<K,V> sr = search(root(), key);
         switch(sr.rDirection) {
         case LEFT:
-            return sr.result.left(ctx).value();
+            return sr.result.left(ctx).getValue();
         default: //case RIGHT:, but we need to convince compiler we return.
-            return sr.result.right(ctx).value();
+            return sr.result.right(ctx).getValue();
         }
     }
 
-    public final List<V> fetchPrefixed(K key) {
+    public final Map.Entry<K,V> min() {
         if(root() == null) {
-            return Collections.emptyList();
+            return null;
+        }
+        Node<K,V> current = root();
+        while(current.isInternal()) {
+            current = current.left(ctx());
+        }
+        return cast(current);
+    }
+
+    public final Map.Entry<K,V> max() {
+        if(root() == null) {
+            return null;
+        }
+        Node<K,V> current = root();
+        while(current.isInternal()) {
+            current = current.right(ctx());
+        }
+        return cast(current);
+    }
+
+    public final void traverse(Cursor<? super K, ? super V> cursor) {
+        if(root() == null) {
+            return;
+        }
+        doTraverse(root(), cursor);
+    }
+
+    public final void traverseWithPrefix(K key,
+                                         Cursor<? super K, ? super V> cursor) {
+        if(root() == null) {
+            return;
         }
         if(!root().isInternal()) {
-            return Collections.singletonList(root().value());
+            Map.Entry<K,V> e = cast(root());
+            cursor.select(e);
+            return;
         }
 
         int keyLen = ctx.chk.lengthInBits(key);
@@ -355,24 +394,21 @@ abstract class AbstractCritBitTree<K,V> implements Serializable {
                 top = current;
             }
         }
-        if(!ctx.chk.isPrefix(current.key() , key)) {
-            return Collections.emptyList();
-        } else {
-            List<V> out = new ArrayList<V>();
-            traverse(top, out);
-            return out;
+        if(!ctx.chk.isPrefix(current.getKey(), key)) {
+            return;
         }
+
+        doTraverse(top, cursor);
     }
 
-    private final void traverse(Node<K,V> top, final List<V> list) {
-        if(top.isInternal()) {
-            traverse(top.left(ctx), list);
-            traverse(top.right(ctx), list);
-        } else {
-            list.add(top.value());
-        }
-    }
+    protected abstract Decision doTraverse(Node<K,V> top,
+                                           Cursor<? super K, ? super V> cursor);
 
     public abstract int size();
     public boolean isEmpty() { return size() == 0; }
+
+    @SuppressWarnings("unchecked")
+    static <T> T cast(Object key) {
+        return (T)key;
+    }
 }
