@@ -246,7 +246,7 @@ public final class MCritBitTree<K,V> extends AbstractCritBitTree<K,V> {
         if(root == null) {
             return null;
         }
-        final K key = cast(k);
+        final K key = AbstractCritBitTree.<K>cast(k);
         if(!root.isInternal()) {
             if(ctx().chk.bitIndex(key, root.getKey()) < 0) {
                 V out = root.getValue();
@@ -289,7 +289,7 @@ public final class MCritBitTree<K,V> extends AbstractCritBitTree<K,V> {
                 return doTraverse(top.right(ctx()), cursor);
             }
         } else {
-            Map.Entry<K,V> e = cast(top);
+            Map.Entry<K,V> e = AbstractCritBitTree.<Map.Entry<K,V>>cast(top);
             return cursor.select(e);
         }
     }
@@ -300,7 +300,7 @@ public final class MCritBitTree<K,V> extends AbstractCritBitTree<K,V> {
     }
 
     public boolean containsKey(Object k) {
-        K key = cast(k);
+        K key = AbstractCritBitTree.<K>cast(k);
         final SearchResult<K,V> sr = search(root, key);
         final int diffBit = ctx().chk.bitIndex(key, sr.key(ctx()));
         return diffBit < 0;
@@ -325,7 +325,7 @@ public final class MCritBitTree<K,V> extends AbstractCritBitTree<K,V> {
     }
 
     public boolean containsValue(Object v) {
-        V val = cast(v);
+        V val = AbstractCritBitTree.<V>cast(v);
         ContainsValueCursor<K,V> cvc = new ContainsValueCursor<K,V>(val);
         traverse(cvc);
         return cvc.getOutcome();

@@ -408,7 +408,7 @@ abstract class AbstractCritBitTree<K,V> implements Serializable {
     public boolean isEmpty() { return size() == 0; }
 
     @SuppressWarnings("unchecked")
-    static <T> T cast(Object key) {
-        return (T)key;
+    static <T> T cast(Object obj) {
+        return (T)obj;
     }
 }
