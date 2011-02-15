@@ -447,11 +447,11 @@ public class PatriciaTrieTest {
         cursor.starting();
         charTrie.traverse(cursor);
         cursor.finished();
-//
-//        // Test removing both an internal & external node.
-//        // 'm' is an example External node in this Trie, and 'p' is an internal.
-//
-//        TestCase.assertEquals(26, charTrie.size());
+
+        // Test removing both an internal & external node.
+        // 'm' is an example External node in this Trie, and 'p' is an internal.
+
+        TestCase.assertEquals(26, charTrie.size());
 //
 //        Object[] toRemove = new Object[] { 'g', 'd', 'e', 'm', 'p', 'q', 'r', 's' };
 //        cursor.addToRemove(toRemove);
@@ -946,15 +946,15 @@ public class PatriciaTrieTest {
         //       null
         //
 
-//        final List<String> strings = new ArrayList<String>();
-//        trie.traverse(new Cursor<String, String>() {
-//            public Decision select(Entry<? extends String, ? extends String> entry) {
-//                strings.add(entry.getValue());
-//                return Decision.CONTINUE;
-//            }
-//        });
-//
-//        TestCase.assertEquals(1, strings.size());
+        final List<String> strings = new ArrayList<String>();
+        trie.traverse(new Cursor<String, String>() {
+            public Decision select(Entry<? extends String, ? extends String> entry) {
+                strings.add(entry.getValue());
+                return Decision.CONTINUE;
+            }
+        });
+
+        TestCase.assertEquals(1, strings.size());
 //
 //        strings.clear();
 //        for (String s : trie.values()) {
