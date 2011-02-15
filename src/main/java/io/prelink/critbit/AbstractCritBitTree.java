@@ -382,6 +382,9 @@ abstract class AbstractCritBitTree<K,V> implements Serializable {
         Node<K,V> current = root();
         Node<K,V> top = current;
         while(current.isInternal()) {
+            if(current.bit() < keyLen) {
+                top = current;
+            }
             switch(current.next(key,ctx)) {
             case LEFT:
                 current = current.left(ctx);
@@ -389,9 +392,6 @@ abstract class AbstractCritBitTree<K,V> implements Serializable {
             case RIGHT:
                 current = current.right(ctx);
                 break;
-            }
-            if(current.bit() < keyLen) {
-                top = current;
             }
         }
         if(!ctx.chk.isPrefix(current.getKey(), key)) {
