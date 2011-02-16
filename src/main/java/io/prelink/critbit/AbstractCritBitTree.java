@@ -381,11 +381,14 @@ abstract class AbstractCritBitTree<K,V> implements Serializable {
         int keyLen = ctx.chk.lengthInBits(key);
         Node<K,V> current = root();
         Node<K,V> top = current;
+        Direction topDirection = Direction.LEFT;
         while(current.isInternal()) {
+            Direction nextDirection = current.next(key, ctx);
             if(current.bit() < keyLen) {
                 top = current;
+                topDirection = nextDirection;
             }
-            switch(current.next(key,ctx)) {
+            switch(nextDirection) {
             case LEFT:
                 current = current.left(ctx);
                 break;
@@ -398,7 +401,14 @@ abstract class AbstractCritBitTree<K,V> implements Serializable {
             return;
         }
 
-        doTraverse(top, cursor);
+        switch(topDirection) {
+        case LEFT:
+            doTraverse(top.left(ctx), cursor);
+            return;
+        default:
+            doTraverse(top.right(ctx), cursor);
+            return;
+        }
     }
 
     protected abstract Decision doTraverse(Node<K,V> top,
