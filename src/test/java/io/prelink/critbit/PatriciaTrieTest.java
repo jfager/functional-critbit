@@ -36,7 +36,7 @@ public class PatriciaTrieTest {
         System.out.print(String.format("Starting test for %s...", p.name()));
         final long start = System.currentTimeMillis();
         for(int i=0; i<ITERS; i++) {
-            String key = RandomStringUtils.random(RandomUtils.nextInt(100) + 1);
+            String key = randomString(rand);
             p.put(key, ""+i);
         }
         final long end = System.currentTimeMillis();
