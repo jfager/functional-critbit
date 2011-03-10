@@ -31,6 +31,7 @@ public class SharedByteArrayTest extends TestCase {
         assertEquals(0, sba.indexOf(bytes("abc")));
         assertEquals(0, sba.indexOf(bytes("a")));
         assertEquals(0, sba.indexOf(bytes(alphabet)));
+        assertEquals(-1, sba.indexOf(bytes(alphabet+toss)));
         assertEquals(23, sba.indexOf(bytes("xyz")));
         assertEquals(25, sba.indexOf(bytes("z")));
         assertEquals(3, sba.indexOf(bytes("def")));
@@ -40,6 +41,89 @@ public class SharedByteArrayTest extends TestCase {
         assertEquals(-1, sba.indexOf(bytes("dd")));
         assertEquals(-1, sba.indexOf(bytes("zz")));
         assertTrue(Arrays.equals(bytes(alphabet), sba.toByteArray()));
+        assertTrue(sba.sub(0,0) == EmptySBA.INSTANCE);
+        assertTrue(sba.sub(0,26) == sba);
+        assertFalse(new ThinSBA(bytes("abc")).equals(sba));
+        assertEquals(new ThinSBA(bytes("abcde")), sba.prefix(5));
+        assertEquals(new ThinSBA(bytes("abcdefghij")), sba.prefix(10));
+        assertEquals(new ThinSBA(bytes("abcdefghijklmno")), sba.prefix(15));
+        assertEquals(new ThinSBA(bytes("klmnopqrstuvwxyz")), sba.suffix(10));
+        assertEquals(new ThinSBA(bytes("uvwxyz")), sba.suffix(20));
+        assertEquals(new ThinSBA(bytes("cde")), sba.sub(2, 5));
+        assertEquals(new ThinSBA(bytes("fghijklmnopqrst")), sba.sub(5, 20));
+        assertEquals(new ThinSBA(bytes("klmnopqrst")), sba.sub(10, 20));
+        assertEquals(new ThinSBA(bytes("mnopqrst")), sba.sub(12, 20));
+
+        byte[] target = new byte[5];
+        sba.toByteArray(0, target, 0, 0);
+        assertTrue(Arrays.equals(new byte[5], target));
+
+        sba.toByteArray(0, target, 0, 5);
+        assertTrue(Arrays.equals(bytes("abcde"), target));
+
+        sba.toByteArray(21, target, 0, 5);
+        assertTrue(Arrays.equals(bytes("vwxyz"), target));
+
+        try {
+            sba.byteAt(-1);
+            fail("Should have thrown IndexOutOfBoundsException");
+        } catch(IndexOutOfBoundsException e) {}
+        try {
+            sba.byteAt(26);
+            fail("Should have thrown IndexOutOfBoundsException");
+        } catch(IndexOutOfBoundsException e) {}
+        try {
+            sba.sub(-1, 26);
+            fail("Should have thrown IndexOutOfBoundsException");
+        } catch(IndexOutOfBoundsException e) {}
+        try {
+            sba.sub(4, 27);
+            fail("Should have thrown IndexOutOfBoundsException");
+        } catch(IndexOutOfBoundsException e) {}
+        try {
+            sba.sub(10, 5);
+            fail("Should have thrown IndexOutOfBoundsException");
+        } catch(IndexOutOfBoundsException e) {}
+        try {
+            sba.toByteArray(-1, new byte[1], 0, 0);
+            fail("Should have thrown IndexOutOfBoundsException");
+        } catch(IndexOutOfBoundsException e) {}
+        try {
+            sba.toByteArray(26, new byte[1], 0, 1);
+            fail("Should have thrown IndexOutOfBoundsException");
+        } catch(IndexOutOfBoundsException e) {}
+        try {
+            sba.toByteArray(0, new byte[1], 0, 2);
+            fail("Should have thrown IndexOutOfBoundsException");
+        } catch(IndexOutOfBoundsException e) {}
+        try {
+            sba.toByteArray(0, new byte[1], 1, 1);
+            fail("Should have thrown IndexOutOfBoundsException");
+        } catch(IndexOutOfBoundsException e) {}
+        try {
+            sba.toByteArray(0, new byte[26], -1, 1);
+            fail("Should have thrown IndexOutOfBoundsException");
+        } catch(IndexOutOfBoundsException e) {}
+        try {
+            sba.toByteArray(0, new byte[26], 0, -1);
+            fail("Should have thrown IndexOutOfBoundsException");
+        } catch(IndexOutOfBoundsException e) {}
+        try {
+            sba.toByteArray(0, new byte[26], 27, 1);
+            fail("Should have thrown IndexOutOfBoundsException");
+        } catch(IndexOutOfBoundsException e) {}
+        try {
+            sba.toByteArray(0, new byte[26], 0, 27);
+            fail("Should have thrown IndexOutOfBoundsException");
+        } catch(IndexOutOfBoundsException e) {}
+        try {
+            sba.toByteArray(0, new byte[26], 1, 26);
+            fail("Should have thrown IndexOutOfBoundsException");
+        } catch(IndexOutOfBoundsException e) {}
+        try {
+            sba.toByteArray(1, new byte[26], 0, 26);
+            fail("Should have thrown IndexOutOfBoundsException");
+        } catch(IndexOutOfBoundsException e) {}
     }
 
     @Test
@@ -50,9 +134,64 @@ public class SharedByteArrayTest extends TestCase {
     }
 
     @Test
+    public void testSuffix() throws Exception {
+        SharedByteArray sba =
+            new ThinSBA(bytes(toss + alphabet)).suffix(tlen);
+        assertTrue(sba instanceof SuffixSBA);
+        doTest(sba);
+    }
+
+    @Test
+    public void testSuffixSuffix() throws Exception {
+        SharedByteArray sba =
+            new ThinSBA(bytes(toss + toss + alphabet))
+                .suffix(tlen).suffix(tlen);
+        assertTrue(sba instanceof SuffixSBA);
+        doTest(sba);
+    }
+
+    @Test
+    public void testPrefix() throws Exception {
+        SharedByteArray sba =
+            new ThinSBA(bytes(alphabet + toss)).prefix(alen);
+        assertTrue(sba instanceof PrefixSBA);
+        doTest(sba);
+    }
+
+    @Test
+    public void testPrefixPrefix() throws Exception {
+        SharedByteArray sba =
+            new ThinSBA(bytes(alphabet + toss + toss))
+                .prefix(alen + tlen).prefix(alen);
+        assertTrue(sba instanceof PrefixSBA);
+        doTest(sba);
+    }
+
+    @Test
     public void testThick() throws Exception {
         SharedByteArray sba =
-            new ThinSBA(bytes(toss + alphabet)).sub(tlen);
+            new ThinSBA(bytes(toss + alphabet + toss))
+                .sub(tlen, tlen+alen);
+        assertTrue(sba instanceof ThickSBA);
+        doTest(sba);
+    }
+
+    @Test
+    public void testPrefixThick() throws Exception {
+        SharedByteArray sba =
+            new ThinSBA(bytes(toss + alphabet + toss))
+                .prefix(tlen+alen)
+                .suffix(tlen);
+        assertTrue(sba instanceof ThickSBA);
+        doTest(sba);
+    }
+
+    @Test
+    public void testSuffixThick() throws Exception {
+        SharedByteArray sba =
+            new ThinSBA(bytes(toss + alphabet + toss))
+                .suffix(tlen)
+                .prefix(alen);
         assertTrue(sba instanceof ThickSBA);
         doTest(sba);
     }
@@ -60,28 +199,100 @@ public class SharedByteArrayTest extends TestCase {
     @Test
     public void testThickThick() throws Exception {
         SharedByteArray sba =
-            new ThinSBA(bytes(toss + toss + alphabet))
-                .sub(tlen).sub(tlen);
+            new ThinSBA(bytes(toss + toss + alphabet + toss + toss))
+                .sub(tlen, tlen+tlen+alen+tlen)
+                .sub(tlen, tlen+alen);
         assertTrue(sba instanceof ThickSBA);
         doTest(sba);
     }
 
     @Test
-    public void testThicker() throws Exception {
+    public void testJoin() throws Exception {
         SharedByteArray sba =
-            new ThinSBA(bytes(toss + alphabet + toss))
-                .sub(tlen, tlen+alen);
-        assertTrue(sba instanceof ThickerSBA);
+            new ThinSBA(bytes(alphabet.substring(0, 10)))
+            .append(new ThinSBA(bytes(alphabet.substring(10))));
+
+        assertTrue(sba instanceof JoinedSBA);
         doTest(sba);
     }
 
     @Test
-    public void testThickerThicker() throws Exception {
-        SharedByteArray sba =
-            new ThinSBA(bytes(toss + alphabet + toss + toss))
-                .sub(tlen, tlen+alen+tlen)
-                .sub(0, alen);
-        assertTrue(sba instanceof ThickerSBA);
-        doTest(sba);
+    public void testEmpty() throws Exception {
+        SharedByteArray sba = EmptySBA.INSTANCE;
+        String str = "";
+
+        assertEquals(str.length(), sba.length());
+        assertEquals(str.indexOf(""), sba.indexOf(bytes("")));
+        assertEquals(str.indexOf("something"), sba.indexOf(bytes("something")));
+        assertEquals(str.indexOf("something"), sba.indexOf(bytes("something")));
+        assertEquals(str.substring(0,0), "");
+        assertEquals(sba.sub(0,0), EmptySBA.INSTANCE);
+        assertEquals(sba.prefix(0), EmptySBA.INSTANCE);
+        assertEquals(sba.suffix(0), EmptySBA.INSTANCE);
+        assertEquals(0, sba.toByteArray().length);
+        SharedByteArray appended = new ThinSBA(bytes(toss));
+        assertTrue(sba.append(appended) == appended);
+        try {
+            str.charAt(0);
+            fail("Should have thrown IndexOutOfBoundsException");
+        } catch(IndexOutOfBoundsException e) {}
+        try {
+            sba.byteAt(0);
+            fail("Should have thrown IndexOutOfBoundsException");
+        } catch(IndexOutOfBoundsException e) {}
+        try {
+            str.substring(0,1);
+            fail("Should have thrown IndexOutOfBoundsException");
+        } catch(IndexOutOfBoundsException e) {}
+        try {
+            sba.sub(0,1);
+            fail("Should have thrown IndexOutOfBoundsException");
+        } catch(IndexOutOfBoundsException e) {}
+        try {
+            sba.prefix(1);
+            fail("Should have thrown IndexOutOfBoundsException");
+        } catch(IndexOutOfBoundsException e) {}
+        try {
+            str.substring(1,1);
+            fail("Should have thrown IndexOutOfBoundsException");
+        } catch(IndexOutOfBoundsException e) {}
+        try {
+            sba.sub(1,1);
+            fail("Should have thrown IndexOutOfBoundsException");
+        } catch(IndexOutOfBoundsException e) {}
+        try {
+            sba.suffix(1);
+            fail("Should have thrown IndexOutOfBoundsException");
+        } catch(IndexOutOfBoundsException e) {}
+
+        byte[] target = new byte[5];
+        try {
+            sba.toByteArray(1, target, 0, 0);
+            fail("Should have thrown IndexOutOfBoundsException");
+        } catch(IndexOutOfBoundsException e) {}
+        try {
+            sba.toByteArray(-1, target, 0, 0);
+            fail("Should have thrown IndexOutOfBoundsException");
+        } catch(IndexOutOfBoundsException e) {}
+        try {
+            sba.toByteArray(0, target, -1, 0);
+            fail("Should have thrown IndexOutOfBoundsException");
+        } catch(IndexOutOfBoundsException e) {}
+        try {
+            sba.toByteArray(0, target, 0, 1);
+            fail("Should have thrown IndexOutOfBoundsException");
+        } catch(IndexOutOfBoundsException e) {}
+        try {
+            sba.toByteArray(0, target, 0, -1);
+            fail("Should have thrown IndexOutOfBoundsException");
+        } catch(IndexOutOfBoundsException e) {}
+        try {
+            sba.toByteArray(0, target, 6, 0); //Same behavior as System.arraycopy
+            fail("Should have thrown IndexOutOfBoundsException");
+        } catch(IndexOutOfBoundsException e) {}
+        sba.toByteArray(0, target, 0, 0);
+        sba.toByteArray(0, target, 1, 0);
+        sba.toByteArray(0, target, 5, 0);  //Same behavior as System.arraycopy
+
     }
 }

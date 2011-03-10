@@ -1,22 +1,21 @@
 package io.prelink.critbit.sharedbytearray;
 
-final class ThickSBA extends AbstractSBA {
+final class SuffixSBA extends AbstractSBA {
+
     private final byte[] bytes;
     private final int sharedStart;
-    private final int sharedEnd;
 
-    public ThickSBA(byte[] bytes, int start, int end) {
+    public SuffixSBA(byte[] bytes, int start) {
         this.bytes = bytes;
         this.sharedStart = start;
-        this.sharedEnd = end;
     }
 
     public int length() {
-        return sharedEnd - sharedStart;
+        return bytes.length - sharedStart;
     }
 
     public byte byteAt(int index) {
-        if(index < 0 || index >= length()) {
+        if(index < 0) {
             throw new IndexOutOfBoundsException();
         }
         return bytes[sharedStart + index];
@@ -30,13 +29,15 @@ final class ThickSBA extends AbstractSBA {
             return EmptySBA.INSTANCE;
         } else if(start == 0 && end == length()) {
             return this;
+        } else if(end == length()) {
+            return new SuffixSBA(bytes, sharedStart + start);
         } else {
             return new ThickSBA(bytes, sharedStart + start, sharedStart + end);
         }
     }
 
     public void toByteArray(int start, byte[] target, int targetStart, int len) {
-        if(start < 0 || start+len > length()) {
+        if(start < 0) {
             throw new IndexOutOfBoundsException();
         }
         System.arraycopy(bytes, sharedStart + start, target, targetStart, len);
