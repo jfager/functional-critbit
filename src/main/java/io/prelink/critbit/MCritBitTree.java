@@ -213,10 +213,16 @@ public final class MCritBitTree<K,V> extends AbstractCritBitTree<K,V> {
         } else if(diffBit < 0 || diffBit >= sr.parent.bit()) {
             switch(sr.pDirection) {
             case LEFT:
-                sr.parent.setLeft(diffBit, key, val, ctx());
+                Node<K,V> chkl = sr.parent.setLeft(diffBit, key, val, ctx());
+                if(chkl != sr.parent) {
+                    throw new RuntimeException("Missed an insert");
+                }
                 return out;
             case RIGHT:
-                sr.parent.setRight(diffBit, key, val, ctx());
+                Node<K,V> chkr = sr.parent.setRight(diffBit, key, val, ctx());
+                if(chkr != sr.parent) {
+                    throw new RuntimeException("Missed an insert");
+                }
                 return out;
             }
         }
@@ -265,15 +271,50 @@ public final class MCritBitTree<K,V> extends AbstractCritBitTree<K,V> {
             }
         }
 
-        SearchResult<K,V> sr = search(root, key);
-        int diffBit = ctx().chk.bitIndex(key, sr.key(ctx()));
-        if(diffBit < 0) {
-            V out = sr.value(ctx());
-            sr.parent.remove(key, ctx(), true);
-            size--;
-            return out;
-        } else {
-            return null;
+        Node<K,V> grandparent = null;
+        Node<K,V> parent = null;
+        Node<K,V> cur = root;
+        for(;;) {
+            switch(cur.next(key, ctx())) {
+            case LEFT:
+                if(cur.hasExternalLeft()) {
+                    Node<K,V> leftNode = cur.left(ctx());
+                    if(ctx().chk.bitIndex(key, leftNode.getKey()) < 0) {
+                        if(grandparent == null) {
+                            root = root.remove(key, ctx(), true);
+                        } else {
+                            grandparent.remove(key, ctx(), true);
+                        }
+                        size--;
+                        return leftNode.getValue();
+                    } else {
+                        return null;
+                    }
+                }
+                grandparent = parent;
+                parent = cur;
+                cur = cur.left(ctx());
+                break;
+            case RIGHT:
+                if(cur.hasExternalRight()) {
+                    Node<K,V> rightNode = cur.right(ctx());
+                    if(ctx().chk.bitIndex(key, rightNode.getKey()) < 0) {
+                        if(grandparent == null) {
+                            root = root.remove(key, ctx(), true);
+                        } else {
+                            grandparent.remove(key, ctx(), true);
+                        }
+                        size--;
+                        return rightNode.getValue();
+                    } else {
+                        return null;
+                    }
+                }
+                grandparent = parent;
+                parent = cur;
+                cur = cur.right(ctx());
+                break;
+            }
         }
     }
 

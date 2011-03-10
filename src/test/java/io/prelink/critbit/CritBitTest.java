@@ -38,17 +38,14 @@ public class CritBitTest extends TestCase {
 
         for(String s: items) {
             wrapper.put(k.key(s), s);
+            cb = wrapper.getCB();
+            assertTrue("Tree must contain key "+s, cb.containsKey(k.key(s)));
+            assertTrue("Tree must contain val "+s, cb.containsValue(s));
+            assertEquals(s, cb.get(k.key(s)));
         }
 
-        cb = wrapper.getCB();
         assertFalse(cb.isEmpty());
         assertEquals(items.length, cb.size());
-        assertEquals("u", cb.get(k.key("u")));
-
-        assertTrue(cb.containsKey(k.key("unind")));
-        assertTrue(cb.containsValue("unind"));
-        assertEquals("unind", cb.get(k.key("unind")));
-
         assertFalse(cb.containsKey(k.key("monkey")));
         assertFalse(cb.containsValue("monkey"));
 
@@ -72,11 +69,19 @@ public class CritBitTest extends TestCase {
 
         for(String s: target) {
             wrapper.remove(k.key(s));
+            cb = wrapper.getCB();
+            assertFalse(cb.containsKey(k.key(s)));
+            assertFalse(cb.containsValue(k.key(s)));
+            assertNull(cb.get(k.key(s)));
         }
 
         cb = wrapper.getCB();
+        assertFalse(cb.isEmpty());
         assertEquals(items.length - target.size(), cb.size());
-        //cb.traverseWithPrefix(k.key("unin"), new AssertDoNothingCursor<K>());
+        assertEquals("a", cb.min().getValue());
+        assertEquals("z", cb.max().getValue());
+
+        cb.traverseWithPrefix(k.key("unin"), new AssertDoNothingCursor<K>());
     }
 
     @Test

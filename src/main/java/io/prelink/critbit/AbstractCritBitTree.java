@@ -329,11 +329,11 @@ abstract class AbstractCritBitTree<K,V> implements Serializable {
             return root().getValue();
         }
         SearchResult<K,V> sr = search(root(), key);
-        switch(sr.rDirection) {
-        case LEFT:
-            return sr.result.left(ctx).getValue();
-        default: //case RIGHT:, but we need to convince compiler we return.
-            return sr.result.right(ctx).getValue();
+        final int diffBit = ctx().chk.bitIndex(key, sr.key(ctx()));
+        if(diffBit < 0) {
+            return sr.value(ctx());
+        } else {
+            return null;
         }
     }
 
@@ -422,7 +422,15 @@ abstract class AbstractCritBitTree<K,V> implements Serializable {
     }
 
     public final boolean containsKey(Object k) {
-        K key = AbstractCritBitTree.<K>cast(k);
+        if(root() == null) {
+            return false;
+        }
+
+        K key = cast(k);
+        if(!root().isInternal()) {
+            return ctx().chk.bitIndex(key, root().getKey()) < 0;
+        }
+
         final SearchResult<K,V> sr = search(root(), key);
         final int diffBit = ctx().chk.bitIndex(key, sr.key(ctx()));
         return diffBit < 0;
