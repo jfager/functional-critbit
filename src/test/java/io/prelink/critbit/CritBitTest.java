@@ -17,77 +17,132 @@ import org.junit.Test;
 
 public class CritBitTest extends TestCase {
 
+    private static interface CBWrapper<K> {
+        void put(K key, String val);
+        void remove(K key);
+        AbstractCritBitTree<K,String> getCB();
+    }
+
+    private <K> void commonTests(CBWrapper<K> wrapper, Keyifier<K> k) {
+        AbstractCritBitTree<K,String> cb = wrapper.getCB();
+        assertTrue(cb.isEmpty());
+        assertNull(cb.get(k.key("u")));
+        cb.traverse(new AssertDoNothingCursor<K>());
+        cb.traverseWithPrefix(k.key("u"), new AssertDoNothingCursor<K>());
+
+        String[] items = {
+                "u", "un", "unh", "uni", "unj", "unim", "unin", "unio",
+                "uninc", "unind", "unine", "unindd", "uninde", "unindf",
+                "unindew", "unindex", "unindey", "a", "z"
+        };
+
+        for(String s: items) {
+            wrapper.put(k.key(s), s);
+        }
+
+        cb = wrapper.getCB();
+        assertFalse(cb.isEmpty());
+        assertEquals(items.length, cb.size());
+        assertEquals("u", cb.get(k.key("u")));
+
+        assertTrue(cb.containsKey(k.key("unind")));
+        assertTrue(cb.containsValue("unind"));
+        assertEquals("unind", cb.get(k.key("unind")));
+
+        assertFalse(cb.containsKey(k.key("monkey")));
+        assertFalse(cb.containsValue("monkey"));
+
+        assertEquals("a", cb.min().getValue());
+        assertEquals("z", cb.max().getValue());
+
+        final List<String> target
+            = Arrays.asList(new String[]{"unin", "uninc", "unind", "unindd",
+                    "uninde", "unindew", "unindex", "unindey",
+                    "unindf", "unine"});
+
+        final List<String> gathered = new ArrayList<String>();
+        cb.traverseWithPrefix(k.key("unin"), new ValueListCursor<K>(gathered));
+        assertEquals(target, gathered);
+
+        final List<String> filtered = new ArrayList<String>();
+        cb.traverseWithPrefix(k.key("unin"),
+                new FilterLimitCursor<K>(filtered));
+        assertEquals(Arrays.asList(
+                new String[]{"unindd","uninde","unindew"}), filtered);
+
+        for(String s: target) {
+            wrapper.remove(k.key(s));
+        }
+
+        cb = wrapper.getCB();
+        assertEquals(items.length - target.size(), cb.size());
+        //cb.traverseWithPrefix(k.key("unin"), new AssertDoNothingCursor<K>());
+    }
 
     @Test
-    public void testTraverse() {
-        MCritBitTree<String, String> intTrie =
+    public void testMutable() {
+        final MCritBitTree<String, String> test =
             new MCritBitTree<String, String>(StringKeyAnalyzer.INSTANCE);
 
-        intTrie.put("u", "u");
-        intTrie.put("un", "un");
-        intTrie.put("unh", "unh");
-        intTrie.put("uni", "uni");
-        intTrie.put("unj", "unj");
-        intTrie.put("unim", "unim");
-        intTrie.put("unin", "unin");
-        intTrie.put("unio", "unio");
-        intTrie.put("uninc", "uninc");
-        intTrie.put("unind", "unind");
-        intTrie.put("unine", "unine");
-        intTrie.put("unindd", "unindd");
-        intTrie.put("uninde", "uninde");
-        intTrie.put("unindf", "unindf");
-        intTrie.put("unindew", "unindew");
-        intTrie.put("unindex", "unindex");
-        intTrie.put("unindey", "unindey");
-        intTrie.put("a", "a");
-        intTrie.put("z", "z");
-
-        final List<String> target
-            = Arrays.asList(new String[]{"unin", "uninc", "unind", "unindd",
-                    "uninde", "unindew", "unindex", "unindey",
-                    "unindf", "unine"});
-
-        final List<String> gathered = new ArrayList<String>();
-        intTrie.traverseWithPrefix("unin", new ValueListCursor<String, String>(gathered));
-        assertEquals(target, gathered);
+        commonTests(new MutableCBWrapper<String>(test), skier);
     }
 
     @Test
-    public void testSBA() {
-        MCritBitTree<SharedByteArray, String> intTrie =
+    public void testImmutable() {
+        final CritBitTree<String, String> cb =
+            new CritBitTree<String, String>(StringKeyAnalyzer.INSTANCE);
+
+        commonTests(new ImmutableCBWrapper<String>(cb), skier);
+    }
+
+    @Test
+    public void testSBAKey() {
+        final MCritBitTree<SharedByteArray, String> test =
             new MCritBitTree<SharedByteArray, String>(SBAKeyAnalyzer.INSTANCE);
 
-        intTrie.put(sba("u"), "u");
-        intTrie.put(sba("un"), "un");
-        intTrie.put(sba("unh"), "unh");
-        intTrie.put(sba("uni"), "uni");
-        intTrie.put(sba("unj"), "unj");
-        intTrie.put(sba("unim"), "unim");
-        intTrie.put(sba("unin"), "unin");
-        intTrie.put(sba("unio"), "unio");
-        intTrie.put(sba("uninc"), "uninc");
-        intTrie.put(sba("unind"), "unind");
-        intTrie.put(sba("unine"), "unine");
-        intTrie.put(sba("unindd"), "unindd");
-        intTrie.put(sba("uninde"), "uninde");
-        intTrie.put(sba("unindf"), "unindf");
-        intTrie.put(sba("unindew"), "unindew");
-        intTrie.put(sba("unindex"), "unindex");
-        intTrie.put(sba("unindey"), "unindey");
-        intTrie.put(sba("a"), "a");
-        intTrie.put(sba("z"), "z");
-
-        final List<String> target
-            = Arrays.asList(new String[]{"unin", "uninc", "unind", "unindd",
-                    "uninde", "unindew", "unindex", "unindey",
-                    "unindf", "unine"});
-
-        final List<String> gathered = new ArrayList<String>();
-        intTrie.traverseWithPrefix(sba("unin"),
-                new ValueListCursor<SharedByteArray, String>(gathered));
-        assertEquals(target, gathered);
+        commonTests(new MutableCBWrapper<SharedByteArray>(test), bytekier);
     }
+
+    private static class ImmutableCBWrapper<K> implements CBWrapper<K> {
+        private CritBitTree<K, String> test;
+        public ImmutableCBWrapper(CritBitTree<K,String> cb) {
+            this.test = cb;
+        }
+        public void put(K key, String val) {
+            test = test.put(key, val);
+        }
+        public void remove(K key) {
+            test = test.remove(key);
+        }
+        public AbstractCritBitTree<K, String> getCB() {
+            return test;
+        }
+    }
+    private static class MutableCBWrapper<K> implements CBWrapper<K> {
+        private MCritBitTree<K, String> test;
+        public MutableCBWrapper(MCritBitTree<K,String> cb) {
+            this.test = cb;
+        }
+        public void put(K key, String val) {
+            test.put(key, val);
+        }
+        public void remove(K key) {
+            test.remove(key);
+        }
+        public AbstractCritBitTree<K, String> getCB() {
+            return test;
+        }
+    }
+
+    private static interface Keyifier<K> {
+        K key(String s);
+    }
+    private static Keyifier<String> skier = new Keyifier<String>() {
+        public String key(String s) { return s; }
+    };
+    private static Keyifier<SharedByteArray> bytekier = new Keyifier<SharedByteArray>() {
+        public SharedByteArray key(String s) { return sba(s); }
+    };
 
     private static SharedByteArray sba(String s) {
         return new ThinSBA(bytes(s));
@@ -101,14 +156,36 @@ public class CritBitTest extends TestCase {
         }
     }
 
-    private class ValueListCursor<K,V> implements Cursor<K,V> {
-        private final List<V> list;
-        public ValueListCursor(List<V> basket) {
+    private class AssertDoNothingCursor<K> implements Cursor<K,String> {
+        public Decision select(Map.Entry<? extends K, ? extends String> entry) {
+            throw new RuntimeException("Shouldn't do anything");
+        }
+    }
+
+    private class ValueListCursor<K> implements Cursor<K,String> {
+        private final List<String> list;
+        public ValueListCursor(List<String> basket) {
             this.list = basket;
         }
-        public Decision select(Map.Entry<? extends K, ? extends V> entry) {
+        public Decision select(Map.Entry<? extends K, ? extends String> entry) {
             list.add(entry.getValue());
             return Decision.CONTINUE;
+        }
+    }
+
+    private class FilterLimitCursor<K> implements Cursor<K,String> {
+        private final List<String> list;
+        private int counter = 0;
+        public FilterLimitCursor(List<String> basket) {
+            this.list = basket;
+        }
+        public Decision select(Map.Entry<? extends K, ? extends String> entry) {
+            String val = entry.getValue();
+            if(val.length() > 5) {
+                list.add(val);
+                counter++;
+            }
+            return (counter < 3) ? Decision.CONTINUE : Decision.EXIT;
         }
     }
 }

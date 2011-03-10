@@ -1,6 +1,5 @@
 package io.prelink.critbit;
 
-
 import java.io.Serializable;
 import java.util.Map;
 
@@ -415,10 +414,42 @@ abstract class AbstractCritBitTree<K,V> implements Serializable {
                                            Cursor<? super K, ? super V> cursor);
 
     public abstract int size();
-    public boolean isEmpty() { return size() == 0; }
+    public final boolean isEmpty() { return size() == 0; }
 
     @SuppressWarnings("unchecked")
     static <T> T cast(Object obj) {
         return (T)obj;
+    }
+
+    public final boolean containsKey(Object k) {
+        K key = AbstractCritBitTree.<K>cast(k);
+        final SearchResult<K,V> sr = search(root(), key);
+        final int diffBit = ctx().chk.bitIndex(key, sr.key(ctx()));
+        return diffBit < 0;
+    }
+
+    private static class ContainsValueCursor<K,V> implements Cursor<K,V> {
+        private final V value;
+        private boolean outcome = false;
+        public ContainsValueCursor(V value) {
+            this.value = value;
+        }
+        public Decision select(Map.Entry<? extends K, ? extends V> entry) {
+            if(value.equals(entry.getValue())) {
+                outcome = true;
+                return Decision.EXIT;
+            }
+            return Decision.CONTINUE;
+        }
+        public boolean getOutcome() {
+            return outcome;
+        }
+    }
+
+    public final boolean containsValue(Object v) {
+        V val = AbstractCritBitTree.<V>cast(v);
+        ContainsValueCursor<K,V> cvc = new ContainsValueCursor<K,V>(val);
+        traverse(cvc);
+        return cvc.getOutcome();
     }
 }

@@ -177,6 +177,7 @@ public final class MCritBitTree<K,V> extends AbstractCritBitTree<K,V> {
     }
 
     Node<K,V> root() { return root; }
+    public int size() { return size; }
 
     public V put(K key, V val) {
         if(root == null) {
@@ -242,6 +243,12 @@ public final class MCritBitTree<K,V> extends AbstractCritBitTree<K,V> {
         }
     }
 
+    public void putAll(Map<? extends K, ? extends V> otherMap) {
+        for(Map.Entry<? extends K, ? extends V> me: otherMap.entrySet()) {
+            put(me.getKey(), me.getValue());
+        }
+    }
+
     public V remove(Object k) {
         if(root == null) {
             return null;
@@ -268,11 +275,11 @@ public final class MCritBitTree<K,V> extends AbstractCritBitTree<K,V> {
         } else {
             return null;
         }
-
     }
 
-    public int size() {
-        return size;
+    public void clear() {
+        this.root = null;
+        this.size = 0;
     }
 
     protected final Decision doTraverse(Node<K,V> top,
@@ -291,49 +298,6 @@ public final class MCritBitTree<K,V> extends AbstractCritBitTree<K,V> {
         } else {
             Map.Entry<K,V> e = AbstractCritBitTree.<Map.Entry<K,V>>cast(top);
             return cursor.select(e);
-        }
-    }
-
-    public void clear() {
-        this.root = null;
-        this.size = 0;
-    }
-
-    public boolean containsKey(Object k) {
-        K key = AbstractCritBitTree.<K>cast(k);
-        final SearchResult<K,V> sr = search(root, key);
-        final int diffBit = ctx().chk.bitIndex(key, sr.key(ctx()));
-        return diffBit < 0;
-    }
-
-    private static class ContainsValueCursor<K,V> implements Cursor<K,V> {
-        private final V value;
-        private boolean outcome = false;
-        public ContainsValueCursor(V value) {
-            this.value = value;
-        }
-        public Decision select(Map.Entry<? extends K, ? extends V> entry) {
-            if(value.equals(entry.getValue())) {
-                outcome = true;
-                return Decision.EXIT;
-            }
-            return Decision.CONTINUE;
-        }
-        public boolean getOutcome() {
-            return outcome;
-        }
-    }
-
-    public boolean containsValue(Object v) {
-        V val = AbstractCritBitTree.<V>cast(v);
-        ContainsValueCursor<K,V> cvc = new ContainsValueCursor<K,V>(val);
-        traverse(cvc);
-        return cvc.getOutcome();
-    }
-
-    public void putAll(Map<? extends K, ? extends V> otherMap) {
-        for(Map.Entry<? extends K, ? extends V> me: otherMap.entrySet()) {
-            put(me.getKey(), me.getValue());
         }
     }
 }

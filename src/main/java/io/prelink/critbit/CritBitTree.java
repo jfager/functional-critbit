@@ -183,6 +183,7 @@ public final class CritBitTree<K,V> extends AbstractCritBitTree<K,V> {
     }
 
     Node<K,V> root() { return root; }
+    public int size() { return size; }
 
     public CritBitTree<K,V> put(K key, V val) {
         if(root() == null) {
@@ -232,7 +233,4 @@ public final class CritBitTree<K,V> extends AbstractCritBitTree<K,V> {
             return cursor.select(e);
         }
     }
-
-    public int size() { return size; }
-
 }
