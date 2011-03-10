@@ -27,8 +27,19 @@ public class CritBitTest extends TestCase {
         AbstractCritBitTree<K,String> cb = wrapper.getCB();
         assertTrue(cb.isEmpty());
         assertNull(cb.get(k.key("u")));
+        assertNull(cb.min());
+        assertNull(cb.max());
         cb.traverse(new AssertDoNothingCursor<K>());
         cb.traverseWithPrefix(k.key("u"), new AssertDoNothingCursor<K>());
+
+        wrapper.put(k.key("a"), "a");
+        wrapper.put(k.key("b"), "b");
+        wrapper.remove(k.key("a"));
+        wrapper.remove(k.key("b"));
+        cb = wrapper.getCB();
+        assertTrue(cb.isEmpty());
+        assertNull(cb.get(k.key("a")));
+        assertNull(cb.get(k.key("b")));
 
         String[] items = {
                 "u", "un", "unh", "uni", "unj", "unim", "unin", "unio",
@@ -67,12 +78,17 @@ public class CritBitTest extends TestCase {
         assertEquals(Arrays.asList(
                 new String[]{"unindd","uninde","unindew"}), filtered);
 
+        int size = items.length;
         for(String s: target) {
             wrapper.remove(k.key(s));
             cb = wrapper.getCB();
             assertFalse(cb.containsKey(k.key(s)));
             assertFalse(cb.containsValue(k.key(s)));
             assertNull(cb.get(k.key(s)));
+            assertEquals(--size, cb.size());
+            wrapper.remove(k.key(s));
+            cb = wrapper.getCB();
+            assertEquals(size, cb.size());
         }
 
         cb = wrapper.getCB();
