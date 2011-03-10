@@ -213,16 +213,10 @@ public final class MCritBitTree<K,V> extends AbstractCritBitTree<K,V> {
         } else if(diffBit < 0 || diffBit >= sr.parent.bit()) {
             switch(sr.pDirection) {
             case LEFT:
-                Node<K,V> chkl = sr.parent.setLeft(diffBit, key, val, ctx());
-                if(chkl != sr.parent) {
-                    throw new RuntimeException("Missed an insert");
-                }
+                sr.parent.setLeft(diffBit, key, val, ctx());
                 return out;
             case RIGHT:
-                Node<K,V> chkr = sr.parent.setRight(diffBit, key, val, ctx());
-                if(chkr != sr.parent) {
-                    throw new RuntimeException("Missed an insert");
-                }
+                sr.parent.setRight(diffBit, key, val, ctx());
                 return out;
             }
         }
