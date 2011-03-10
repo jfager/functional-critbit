@@ -426,7 +426,7 @@ abstract class AbstractCritBitTree<K,V> implements Serializable {
             return false;
         }
 
-        K key = cast(k);
+        K key = AbstractCritBitTree.<K>cast(k);
         if(!root().isInternal()) {
             return ctx().chk.bitIndex(key, root().getKey()) < 0;
         }
