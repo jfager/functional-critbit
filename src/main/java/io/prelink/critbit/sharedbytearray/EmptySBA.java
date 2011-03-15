@@ -15,31 +15,67 @@ final class EmptySBA implements SharedByteArray {
         throw new IndexOutOfBoundsException();
     }
 
-    public int indexOf(byte[] needle) {
+    private void ensureZero(int i) {
+        if(i != 0) {
+            throw new IndexOutOfBoundsException();
+        }
+    }
+
+    public int indexOf(byte needle, int from) {
+        ensureZero(from);
+        return -1;
+    }
+
+    public int indexOf(byte[] needle, int from) {
+        ensureZero(from);
         if(needle.length == 0) {
             return 0;
         }
         return -1;
     }
 
-    public SharedByteArray prefix(int end) {
-        if(end != 0) {
-            throw new IndexOutOfBoundsException();
+    public int indexOf(SharedByteArray needle, int from) {
+        ensureZero(from);
+        if(needle.length() == 0) {
+            return 0;
         }
+        return -1;
+    }
+
+    public int lastIndexOf(byte needle, int to) {
+        ensureZero(to);
+        return -1;
+    }
+
+    public int lastIndexOf(byte[] needle, int to) {
+        ensureZero(to);
+        if(needle.length == 0) {
+            return 0;
+        }
+        return -1;
+    }
+
+    public int lastIndexOf(SharedByteArray needle, int to) {
+        ensureZero(to);
+        if(needle.length() == 0) {
+            return 0;
+        }
+        return -1;
+    }
+
+    public SharedByteArray prefix(int end) {
+        ensureZero(end);
         return this;
     }
 
     public SharedByteArray suffix(int start) {
-        if(start != 0) {
-            throw new IndexOutOfBoundsException();
-        }
+        ensureZero(start);
         return this;
     }
 
     public SharedByteArray sub(int start, int end) {
-        if(!(start == 0 && end == 0)) {
-            throw new IndexOutOfBoundsException();
-        }
+        ensureZero(start);
+        ensureZero(end);
         return this;
     }
 

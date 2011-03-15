@@ -16,30 +16,62 @@ public class SharedByteArrayTest extends TestCase {
         }
     }
 
+    private static byte b(char c) {
+        return (byte)c;
+    }
+
     private static final String alphabet = "abcdefghijklmnopqrstuvwxyz";
     private static final int alen = alphabet.length();
+
+    private static final String as = "aaaaaaaaaaaaaaaaaaaaaaaaaa";
 
     private static final String toss = "toss";
     private static final int tlen = toss.length();
 
     private void doTest(SharedByteArray sba) {
         assertEquals(26, sba.length());
+        assertEquals(sba, sba);
+        assertEquals(new ThinSBA(bytes(alphabet)), sba);
+        assertFalse(sba.equals(null));
+        assertFalse(sba.equals(new ThinSBA(bytes(toss))));
+        assertFalse(sba.equals(new ThinSBA(bytes(as))));
         assertEquals(bytes("a")[0], sba.byteAt(0));
         assertEquals(bytes("d")[0], sba.byteAt(3));
         assertEquals(bytes("z")[0], sba.byteAt(25));
-        assertEquals(-1, sba.indexOf(bytes("monkey")));
-        assertEquals(0, sba.indexOf(bytes("abc")));
-        assertEquals(0, sba.indexOf(bytes("a")));
-        assertEquals(0, sba.indexOf(bytes(alphabet)));
-        assertEquals(-1, sba.indexOf(bytes(alphabet+toss)));
-        assertEquals(23, sba.indexOf(bytes("xyz")));
-        assertEquals(25, sba.indexOf(bytes("z")));
-        assertEquals(3, sba.indexOf(bytes("def")));
-        assertEquals(3, sba.indexOf(bytes("d")));
-        assertEquals(-1, sba.indexOf(bytes("")));
-        assertEquals(-1, sba.indexOf(bytes("aa")));
-        assertEquals(-1, sba.indexOf(bytes("dd")));
-        assertEquals(-1, sba.indexOf(bytes("zz")));
+        assertEquals(-1, sba.indexOf(bytes("monkey"), 0));
+        assertEquals(0, sba.indexOf(bytes("abc"), 0));
+        assertEquals(0, sba.indexOf(bytes("a"), 0));
+        assertEquals(0, sba.indexOf(b('a'), 0));
+        assertEquals(0, sba.indexOf(bytes(alphabet), 0));
+        assertEquals(-1, sba.indexOf(bytes(alphabet+toss), 0));
+        assertEquals(23, sba.indexOf(bytes("xyz"), 0));
+        assertEquals(25, sba.indexOf(bytes("z"), 0));
+        assertEquals(25, sba.indexOf(b('z'), 0));
+        assertEquals(3, sba.indexOf(bytes("def"), 0));
+        assertEquals(3, sba.indexOf(bytes("d"), 0));
+        assertEquals(3, sba.indexOf(b('d'), 0));
+        assertEquals(-1, sba.indexOf(bytes(""), 0));
+        assertEquals(-1, sba.indexOf(bytes("aa"), 0));
+        assertEquals(-1, sba.indexOf(bytes("dd"), 0));
+        assertEquals(-1, sba.indexOf(bytes("zz"), 0));
+        assertEquals(-1, sba.indexOf(b('9'), 0));
+        assertEquals(-1, sba.lastIndexOf(bytes("monkey"), 26));
+        assertEquals(0, sba.lastIndexOf(bytes("abc"), 26));
+        assertEquals(0, sba.lastIndexOf(bytes("a"), 26));
+        assertEquals(0, sba.lastIndexOf(b('a'), 26));
+        assertEquals(0, sba.lastIndexOf(bytes(alphabet), 26));
+        assertEquals(-1, sba.lastIndexOf(bytes(alphabet+toss), 26));
+        assertEquals(23, sba.lastIndexOf(bytes("xyz"), 26));
+        assertEquals(25, sba.lastIndexOf(bytes("z"), 26));
+        assertEquals(25, sba.lastIndexOf(b('z'), 26));
+        assertEquals(3, sba.lastIndexOf(bytes("def"), 26));
+        assertEquals(3, sba.lastIndexOf(bytes("d"), 26));
+        assertEquals(3, sba.lastIndexOf(b('d'), 26));
+        assertEquals(-1, sba.lastIndexOf(bytes(""), 26));
+        assertEquals(-1, sba.lastIndexOf(bytes("aa"), 26));
+        assertEquals(-1, sba.lastIndexOf(bytes("dd"), 26));
+        assertEquals(-1, sba.lastIndexOf(bytes("zz"), 26));
+        assertEquals(-1, sba.lastIndexOf(b('9'), 0));
         assertTrue(Arrays.equals(bytes(alphabet), sba.toByteArray()));
         assertTrue(sba.sub(0,0) == EmptySBA.INSTANCE);
         assertTrue(sba.sub(0,26) == sba);
@@ -222,9 +254,16 @@ public class SharedByteArrayTest extends TestCase {
         String str = "";
 
         assertEquals(str.length(), sba.length());
-        assertEquals(str.indexOf(""), sba.indexOf(bytes("")));
-        assertEquals(str.indexOf("something"), sba.indexOf(bytes("something")));
-        assertEquals(str.indexOf("something"), sba.indexOf(bytes("something")));
+        assertEquals(str.indexOf(""), sba.indexOf(bytes(""), 0));
+        assertEquals(str.indexOf(""), sba.indexOf(new ThinSBA(bytes("")), 0));
+        assertEquals(str.indexOf("something"), sba.indexOf(bytes("something"), 0));
+        assertEquals(str.indexOf("something"), sba.indexOf(new ThinSBA(bytes("something")), 0));
+        assertEquals(str.indexOf("s"), sba.indexOf(b('s'), 0));
+        assertEquals(str.lastIndexOf(""), sba.lastIndexOf(bytes(""), 0));
+        assertEquals(str.lastIndexOf(""), sba.lastIndexOf(new ThinSBA(bytes("")), 0));
+        assertEquals(str.lastIndexOf("something"), sba.lastIndexOf(bytes("something"), 0));
+        assertEquals(str.lastIndexOf("something"), sba.lastIndexOf(new ThinSBA(bytes("something")), 0));
+        assertEquals(str.lastIndexOf("s"), sba.lastIndexOf(b('s'), 0));
         assertEquals(str.substring(0,0), "");
         assertEquals(sba.sub(0,0), EmptySBA.INSTANCE);
         assertEquals(sba.prefix(0), EmptySBA.INSTANCE);
