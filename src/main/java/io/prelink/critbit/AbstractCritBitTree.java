@@ -114,17 +114,11 @@ abstract class AbstractCritBitTree<K,V> implements Serializable {
 
         public final Node<K,V> insert(int diffBit, K k, V v, Context<K,V> ctx) {
             if(diffBit >= 0 && diffBit < bit()) {
-                if(ctx.chk.isBitSet(k, diffBit)) {
-                    return ctx.nf.mkShortRight(diffBit, this, k, v);
-                } else {
-                    return ctx.nf.mkShortLeft(diffBit, k, v, this);
-                }
+                return ctx.chk.isBitSet(k, diffBit) ? ctx.nf.mkShortRight(diffBit, this, k, v)
+                                                    : ctx.nf.mkShortLeft(diffBit, k, v, this);
             } else {
-                if(ctx.chk.isBitSet(k, bit())) {
-                    return setRight(diffBit, k, v, ctx);
-                } else {
-                    return setLeft(diffBit, k, v, ctx);
-                }
+                return ctx.chk.isBitSet(k, bit()) ? setRight(diffBit, k, v, ctx)
+                                                  : setLeft(diffBit, k, v, ctx);
             }
         }
 
@@ -187,21 +181,14 @@ abstract class AbstractCritBitTree<K,V> implements Serializable {
             if(diffBit < 0) {
                 return ctx.nf.mkLeaf(key, val);
             }
-            else if(ctx.chk.isBitSet(key, diffBit)) { //new key goes right
-                return ctx.nf.mkShortBoth(diffBit, this.key, this.value, key, val);
-            } else { //new key goes left
-                return ctx.nf.mkShortBoth(diffBit, key, val, this.key, this.value);
-            }
+            return ctx.chk.isBitSet(key, diffBit) ? ctx.nf.mkShortBoth(diffBit, this.key, this.value, key, val)
+                                                  : ctx.nf.mkShortBoth(diffBit, key, val, this.key, this.value);
         }
         public boolean isInternal() { return false; }
         public Node<K,V> remove(K key, Context<K,V> ctx, boolean force) {
-            if(force || ctx.chk.bitIndex(key, this.key) < 0) {
-                return null;
-            } else {
-                return this;
-            }
+            return (force || ctx.chk.bitIndex(key, this.key) < 0) ? null
+                                                                  : this;
         }
-
     }
 
     static final class ShortBothNode<K,V> extends AbstractInternal<K,V> {
@@ -234,18 +221,12 @@ abstract class AbstractCritBitTree<K,V> implements Serializable {
             return ctx.nf.mkShortLeft(bit(), leftKey, leftVal, newRight);
         }
         protected Node<K,V> removeLeft(K key, Context<K,V> ctx, boolean force) {
-            if(force || ctx.chk.bitIndex(key, this.leftKey) < 0) {
-                return ctx.nf.mkLeaf(rightKey, rightVal);
-            } else {
-                return this;
-            }
+            return (force || ctx.chk.bitIndex(key, this.leftKey) < 0) ? ctx.nf.mkLeaf(rightKey, rightVal)
+                                                                      : this;
         }
         protected Node<K,V> removeRight(K key, Context<K,V> ctx, boolean force) {
-            if(force || ctx.chk.bitIndex(key, this.rightKey) < 0) {
-                return ctx.nf.mkLeaf(leftKey, leftVal);
-            } else {
-                return this;
-            }
+            return (force || ctx.chk.bitIndex(key, this.rightKey) < 0) ? ctx.nf.mkLeaf(leftKey, leftVal)
+                                                                       : this;
         }
         public boolean hasExternalLeft() { return true; }
         public boolean hasExternalRight() { return true; }
@@ -330,11 +311,7 @@ abstract class AbstractCritBitTree<K,V> implements Serializable {
         }
         SearchResult<K,V> sr = search(root(), key);
         final int diffBit = ctx().chk.bitIndex(key, sr.key(ctx()));
-        if(diffBit < 0) {
-            return sr.value(ctx());
-        } else {
-            return null;
-        }
+        return (diffBit < 0) ? sr.value(ctx()) : null;
     }
 
     public final Map.Entry<K,V> min() {

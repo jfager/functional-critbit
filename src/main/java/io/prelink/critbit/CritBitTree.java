@@ -51,11 +51,8 @@ public final class CritBitTree<K,V> extends AbstractCritBitTree<K,V> {
             if(right == newRight) {
                 return this;
             }
-            if(newRight.isInternal()) {
-                return ctx.nf.mkShortLeft(bit(), leftKey, leftVal, newRight);
-            } else {
-                return ctx.nf.mkShortBoth(bit(), leftKey, leftVal, newRight.getKey(), newRight.getValue());
-            }
+            return newRight.isInternal() ? ctx.nf.mkShortLeft(bit(), leftKey, leftVal, newRight)
+                                         : ctx.nf.mkShortBoth(bit(), leftKey, leftVal, newRight.getKey(), newRight.getValue());
         }
         public boolean hasExternalLeft() { return true; }
         public boolean hasExternalRight() { return false; }
@@ -89,17 +86,12 @@ public final class CritBitTree<K,V> extends AbstractCritBitTree<K,V> {
             if(left == newLeft) {
                 return this;
             }
-            if(newLeft.isInternal()) {
-                return ctx.nf.mkShortRight(bit(), newLeft, rightKey, rightVal);
-            } else {
-                return ctx.nf.mkShortBoth(bit(), newLeft.getKey(), newLeft.getValue(), rightKey, rightVal);
-            }
+            return newLeft.isInternal() ? ctx.nf.mkShortRight(bit(), newLeft, rightKey, rightVal)
+                                        : ctx.nf.mkShortBoth(bit(), newLeft.getKey(), newLeft.getValue(), rightKey, rightVal);
         }
         protected Node<K,V> removeRight(K key, Context<K,V> ctx, boolean force) {
-            if(force || ctx.chk.bitIndex(key, this.rightKey) < 0) {
-                return left;
-            }
-            return this;
+            return (force || ctx.chk.bitIndex(key, this.rightKey) < 0) ? left
+                                                                       : this;
         }
         public boolean hasExternalLeft() { return false; }
         public boolean hasExternalRight() { return true; }
@@ -128,22 +120,16 @@ public final class CritBitTree<K,V> extends AbstractCritBitTree<K,V> {
             if(left == newLeft) {
                 return this;
             }
-            if(newLeft.isInternal()) {
-                return ctx.nf.mkTall(bit(), newLeft, right);
-            } else {
-                return ctx.nf.mkShortLeft(bit(), newLeft.getKey(), newLeft.getValue(), right);
-            }
+            return newLeft.isInternal() ? ctx.nf.mkTall(bit(), newLeft, right)
+                                        : ctx.nf.mkShortLeft(bit(), newLeft.getKey(), newLeft.getValue(), right);
         }
         protected Node<K,V> removeRight(K key, Context<K,V> ctx, boolean force) {
             Node<K,V> newRight = right.remove(key, ctx, force);
             if(right == newRight) {
                 return this;
             }
-            if(newRight.isInternal()) {
-                return ctx.nf.mkTall(bit(), left, newRight);
-            } else {
-                return ctx.nf.mkShortRight(bit(), left, newRight.getKey(), newRight.getValue());
-            }
+            return newRight.isInternal() ? ctx.nf.mkTall(bit(), left, newRight)
+                                         : ctx.nf.mkShortRight(bit(), left, newRight.getKey(), newRight.getValue());
         }
         public boolean hasExternalLeft() { return false; }
         public boolean hasExternalRight() { return false; }
@@ -208,11 +194,8 @@ public final class CritBitTree<K,V> extends AbstractCritBitTree<K,V> {
             return this;
         }
         Node<K,V> removed = root.remove(key, ctx(), false);
-        if(removed == root) {
-            return this;
-        } else {
-            return new CritBitTree<K,V>(removed, size - 1, ctx());
-        }
+        return (removed == root) ? this
+                                 : new CritBitTree<K,V>(removed, size - 1, ctx());
     }
 
     protected final Decision doTraverse(Node<K,V> top,
