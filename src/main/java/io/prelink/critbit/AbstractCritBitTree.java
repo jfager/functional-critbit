@@ -302,7 +302,8 @@ abstract class AbstractCritBitTree<K,V> implements Serializable {
         }
     }
 
-    public final V get(K key) {
+    public final V get(Object k) {
+    	K key = cast(k);
         if(root() == null) {
             return null;
         }

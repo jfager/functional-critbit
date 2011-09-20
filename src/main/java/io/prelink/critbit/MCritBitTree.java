@@ -1,6 +1,13 @@
 package io.prelink.critbit;
 
+import java.util.AbstractSet;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Set;
 
 import org.ardverk.collection.Cursor;
 import org.ardverk.collection.Cursor.Decision;
@@ -11,7 +18,7 @@ import org.ardverk.collection.KeyAnalyzer;
  * sense, hypothesis being we can improve performance and cut down on garbage
  * collection a bit.
  */
-public final class MCritBitTree<K,V> extends AbstractCritBitTree<K,V> {
+public final class MCritBitTree<K,V> extends AbstractCritBitTree<K,V> implements Map<K,V> {
 
     private static final long serialVersionUID = 20110212L;
 
@@ -335,4 +342,168 @@ public final class MCritBitTree<K,V> extends AbstractCritBitTree<K,V> {
             return cursor.select(e);
         }
     }
+
+	@Override
+    public Set<Map.Entry<K, V>> entrySet() {
+		return new MCritBitEntrySet<K,V>(this);
+    }
+
+	@Override
+    public Set<K> keySet() {
+	    return new MCritBitKeySet<K,V>(this);
+    }
+
+	@Override
+    public Collection<V> values() {
+	    return new MCritBitValueSet<K,V>(this);
+    }
+
+	public Iterator<Node<K,V>> iterator() {
+		return new NodeIterator<K,V>(this);
+	}
+
+	protected static class NodeIterator<K,V> implements Iterator<Node<K,V>> {
+    	//TODO: initialize list to max depth of tree
+		private final MCritBitTree<K,V> tree;
+    	private final List<Node<K,V>> stack = new ArrayList<Node<K,V>>();
+    	private Node<K,V> next = null;
+
+    	public NodeIterator(MCritBitTree<K,V> tree) {
+    		this.tree = tree;
+    		primeStack();
+    	}
+
+    	private void primeStack() {
+    		Context<K,V> ctx = tree.ctx();
+    		if(tree.isEmpty()) {
+    			return;
+    		}
+    		Node<K,V> curr = tree.root();
+    		while(curr.isInternal()) {
+    			push(curr);
+    			curr = curr.left(ctx);
+    		}
+    		next = curr;
+    	}
+
+    	private final void push(final Node<K,V> node) {
+    		stack.add(node);
+    	}
+
+    	private final Node<K,V> pop() {
+    		return stack.remove(stack.size() - 1);
+    	}
+
+    	@Override
+        public boolean hasNext() {
+    		if(next != null) {
+    			return true;
+    		}
+    		if(stack.isEmpty()) {
+    			return false;
+    		}
+
+    		final Context<K,V> ctx = tree.ctx();
+    		Node<K,V> curr = pop().right(ctx);
+			while(curr.isInternal()) {
+				push(curr);
+				curr = curr.left(ctx);
+			}
+			next = curr;
+    		return next != null;
+        }
+
+		@Override
+        public Node<K,V> next() {
+			if(hasNext()) {
+				final Node<K,V> out = next;
+				next = null;
+				return out;
+			}
+            throw new NoSuchElementException();
+        }
+
+		@Override
+        public void remove() {
+			throw new UnsupportedOperationException();
+        }
+    }
+
+	private static class MCritBitEntrySet<K,V> extends AbstractSet<Entry<K,V>> {
+		private final MCritBitTree<K,V> tree;
+		public MCritBitEntrySet(MCritBitTree<K,V> tree) {
+			super();
+			this.tree = tree;
+		}
+		@Override
+		public Iterator<Entry<K, V>> iterator() {
+		    return new EntryIterator<K,V>(tree.iterator());
+	    }
+		@Override
+		public int size() { return tree.size(); }
+		private static class EntryIterator<K,V> implements Iterator<Entry<K,V>> {
+			private final Iterator<Node<K,V>> base;
+			public EntryIterator(Iterator<Node<K,V>> base) {
+				this.base = base;
+			}
+			@Override
+			public Entry<K, V> next() {
+				return AbstractCritBitTree.<Entry<K,V>>cast(base.next());
+			}
+			@Override public boolean hasNext() { return base.hasNext(); }
+			@Override public void remove() { base.remove(); }
+		}
+	}
+
+	private static class MCritBitKeySet<K,V> extends AbstractSet<K> {
+		private final MCritBitTree<K,V> tree;
+		public MCritBitKeySet(MCritBitTree<K,V> tree) {
+			super();
+			this.tree = tree;
+		}
+		@Override
+		public Iterator<K> iterator() {
+		    return new KeyIterator<K,V>(tree.iterator());
+	    }
+		@Override
+		public int size() { return tree.size(); }
+		private static class KeyIterator<K,V> implements Iterator<K> {
+			private final Iterator<Node<K,V>> base;
+			public KeyIterator(Iterator<Node<K,V>> base) {
+				this.base = base;
+			}
+			@Override
+			public K next() {
+				return base.next().getKey();
+			}
+			@Override public boolean hasNext() { return base.hasNext(); }
+			@Override public void remove() { base.remove(); }
+		}
+	}
+
+	private static class MCritBitValueSet<K,V> extends AbstractSet<V> {
+		private final MCritBitTree<K,V> tree;
+		public MCritBitValueSet(MCritBitTree<K,V> tree) {
+			super();
+			this.tree = tree;
+		}
+		@Override
+		public Iterator<V> iterator() {
+		    return new ValueIterator<K,V>(tree.iterator());
+	    }
+		@Override
+	    public int size() { return tree.size(); }
+		private static class ValueIterator<K,V> implements Iterator<V> {
+			private final Iterator<Node<K,V>> base;
+			public ValueIterator(Iterator<Node<K,V>> base) {
+				this.base = base;
+			}
+			@Override
+			public V next() {
+				return base.next().getValue();
+			}
+			@Override public boolean hasNext() { return base.hasNext(); }
+			@Override public void remove() { base.remove(); }
+		}
+	}
 }

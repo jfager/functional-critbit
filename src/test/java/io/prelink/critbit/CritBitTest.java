@@ -6,6 +6,7 @@ import io.prelink.critbit.sharedbytearray.ThinSBA;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -106,6 +107,20 @@ public class CritBitTest extends TestCase {
             new MCritBitTree<String, String>(StringKeyAnalyzer.INSTANCE);
 
         commonTests(new MutableCBWrapper<String>(test), skier);
+
+        List<String> iterkeys = new LinkedList<String>();
+        List<String> itervals = new LinkedList<String>();
+        for(Map.Entry<String, String> e: test.entrySet()) {
+        	iterkeys.add(e.getKey());
+        	itervals.add(e.getValue());
+        }
+
+        List<String> curskeys = new LinkedList<String>();
+        List<String> cursvals = new LinkedList<String>();
+        test.traverse(new EntryListsCursor<String, String>(curskeys, cursvals));
+
+        assertEquals(curskeys, iterkeys);
+        assertEquals(cursvals, itervals);
     }
 
     @Test
@@ -190,6 +205,20 @@ public class CritBitTest extends TestCase {
         }
         public Decision select(Map.Entry<? extends K, ? extends String> entry) {
             list.add(entry.getValue());
+            return Decision.CONTINUE;
+        }
+    }
+
+    private class EntryListsCursor<K,V> implements Cursor<K,V> {
+    	private final List<K> klist;
+    	private final List<V> vlist;
+        public EntryListsCursor(List<K> klist, List<V> vlist) {
+            this.klist = klist;
+            this.vlist = vlist;
+        }
+        public Decision select(Map.Entry<? extends K, ? extends V> entry) {
+            klist.add(entry.getKey());
+            vlist.add(entry.getValue());
             return Decision.CONTINUE;
         }
     }
