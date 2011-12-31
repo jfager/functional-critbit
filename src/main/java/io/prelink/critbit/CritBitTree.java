@@ -212,7 +212,7 @@ public final class CritBitTree<K,V> extends AbstractCritBitTree<K,V> {
                 return doTraverse(top.right(ctx()), cursor);
             }
         } else {
-            Map.Entry<K,V> e = cast(top);
+            Map.Entry<K,V> e = AbstractCritBitTree.<Map.Entry<K,V>>cast(top);
             return cursor.select(e);
         }
     }

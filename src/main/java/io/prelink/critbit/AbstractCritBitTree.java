@@ -303,7 +303,7 @@ abstract class AbstractCritBitTree<K,V> implements Serializable {
     }
 
     public final V get(Object k) {
-    	K key = cast(k);
+    	K key = AbstractCritBitTree.<K>cast(k);
         if(root() == null) {
             return null;
         }
@@ -323,7 +323,7 @@ abstract class AbstractCritBitTree<K,V> implements Serializable {
         while(current.isInternal()) {
             current = current.left(ctx());
         }
-        return cast(current);
+        return AbstractCritBitTree.<Map.Entry<K,V>>cast(current);
     }
 
     public final Map.Entry<K,V> max() {
@@ -334,7 +334,7 @@ abstract class AbstractCritBitTree<K,V> implements Serializable {
         while(current.isInternal()) {
             current = current.right(ctx());
         }
-        return cast(current);
+        return AbstractCritBitTree.<Map.Entry<K,V>>cast(current);
     }
 
     public final void traverse(Cursor<? super K, ? super V> cursor) {
@@ -350,7 +350,7 @@ abstract class AbstractCritBitTree<K,V> implements Serializable {
             return;
         }
         if(!root().isInternal()) {
-            Map.Entry<K,V> e = cast(root());
+            Map.Entry<K,V> e = AbstractCritBitTree.<Map.Entry<K,V>>cast(root());
             cursor.select(e);
             return;
         }
