@@ -308,7 +308,7 @@ abstract class AbstractCritBitTree<K,V> implements Serializable {
             return null;
         }
         if(!root().isInternal()) {
-            return root().getValue();
+            return ctx().chk.bitIndex(key, root().getKey()) < 0 ? root().getValue() : null;
         }
         SearchResult<K,V> sr = search(root(), key);
         final int diffBit = ctx().chk.bitIndex(key, sr.key(ctx()));
