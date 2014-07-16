@@ -21,26 +21,32 @@ public class CritBitTest extends TestCase {
     private static interface CBWrapper<K> {
         void put(K key, String val);
         void remove(K key);
-        AbstractCritBitTree<K,String> getCB();
+        AbstractCritBitTree<K,String> get();
     }
 
-    private <K> void commonTests(CBWrapper<K> wrapper, Keyifier<K> k) {
-        AbstractCritBitTree<K,String> cb = wrapper.getCB();
-        assertTrue(cb.isEmpty());
-        assertNull(cb.get(k.key("u")));
-        assertNull(cb.min());
-        assertNull(cb.max());
-        cb.traverse(new AssertDoNothingCursor<K>());
-        cb.traverseWithPrefix(k.key("u"), new AssertDoNothingCursor<K>());
+    private <K> void commonTests(CBWrapper<K> wrap, Keyifier<K> k) {
+        assertTrue(wrap.get().isEmpty());
+        assertNull(wrap.get().get(k.key("u")));
+        assertNull(wrap.get().min());
+        assertNull(wrap.get().max());
+        wrap.get().traverse(new AssertDoNothingCursor<K>());
+        wrap.get().traverseWithPrefix(k.key("u"), new AssertDoNothingCursor<K>());
+        
+        wrap.put(k.key("a"), "a");
+        assertEquals("a", wrap.get().get(k.key("a")));
+        assertNull(wrap.get().get(k.key("b")));
+        wrap.remove(k.key("a"));
+        assertTrue(wrap.get().isEmpty());
 
-        wrapper.put(k.key("a"), "a");
-        wrapper.put(k.key("b"), "b");
-        wrapper.remove(k.key("a"));
-        wrapper.remove(k.key("b"));
-        cb = wrapper.getCB();
-        assertTrue(cb.isEmpty());
-        assertNull(cb.get(k.key("a")));
-        assertNull(cb.get(k.key("b")));
+        wrap.put(k.key("a"), "a");
+        wrap.put(k.key("b"), "b");
+        assertEquals("a", wrap.get().get(k.key("a")));
+        assertEquals("b", wrap.get().get(k.key("b")));
+        wrap.remove(k.key("a"));
+        wrap.remove(k.key("b"));
+        assertTrue(wrap.get().isEmpty());
+        assertNull(wrap.get().get(k.key("a")));
+        assertNull(wrap.get().get(k.key("b")));
 
         String[] items = {
                 "u", "un", "unh", "uni", "unj", "unim", "unin", "unio",
@@ -49,20 +55,19 @@ public class CritBitTest extends TestCase {
         };
 
         for(String s: items) {
-            wrapper.put(k.key(s), s);
-            cb = wrapper.getCB();
-            assertTrue("Tree must contain key "+s, cb.containsKey(k.key(s)));
-            assertTrue("Tree must contain val "+s, cb.containsValue(s));
-            assertEquals(s, cb.get(k.key(s)));
+            wrap.put(k.key(s), s);
+            assertTrue("Tree must contain key "+s, wrap.get().containsKey(k.key(s)));
+            assertTrue("Tree must contain val "+s, wrap.get().containsValue(s));
+            assertEquals(s, wrap.get().get(k.key(s)));
         }
 
-        assertFalse(cb.isEmpty());
-        assertEquals(items.length, cb.size());
-        assertFalse(cb.containsKey(k.key("monkey")));
-        assertFalse(cb.containsValue("monkey"));
+        assertFalse(wrap.get().isEmpty());
+        assertEquals(items.length, wrap.get().size());
+        assertFalse(wrap.get().containsKey(k.key("monkey")));
+        assertFalse(wrap.get().containsValue("monkey"));
 
-        assertEquals("a", cb.min().getValue());
-        assertEquals("z", cb.max().getValue());
+        assertEquals("a", wrap.get().min().getValue());
+        assertEquals("z", wrap.get().max().getValue());
 
         final List<String> target
             = Arrays.asList(new String[]{"unin", "uninc", "unind", "unindd",
@@ -70,35 +75,32 @@ public class CritBitTest extends TestCase {
                     "unindf", "unine"});
 
         final List<String> gathered = new ArrayList<String>();
-        cb.traverseWithPrefix(k.key("unin"), new ValueListCursor<K>(gathered));
+        wrap.get().traverseWithPrefix(k.key("unin"), new ValueListCursor<K>(gathered));
         assertEquals(target, gathered);
 
         final List<String> filtered = new ArrayList<String>();
-        cb.traverseWithPrefix(k.key("unin"),
+        wrap.get().traverseWithPrefix(k.key("unin"),
                 new FilterLimitCursor<K>(filtered));
         assertEquals(Arrays.asList(
                 new String[]{"unindd","uninde","unindew"}), filtered);
 
         int size = items.length;
         for(String s: target) {
-            wrapper.remove(k.key(s));
-            cb = wrapper.getCB();
-            assertFalse(cb.containsKey(k.key(s)));
-            assertFalse(cb.containsValue(k.key(s)));
-            assertNull(cb.get(k.key(s)));
-            assertEquals(--size, cb.size());
-            wrapper.remove(k.key(s));
-            cb = wrapper.getCB();
-            assertEquals(size, cb.size());
+            wrap.remove(k.key(s));
+            assertFalse(wrap.get().containsKey(k.key(s)));
+            assertFalse(wrap.get().containsValue(k.key(s)));
+            assertNull(wrap.get().get(k.key(s)));
+            assertEquals(--size, wrap.get().size());
+            wrap.remove(k.key(s));
+            assertEquals(size, wrap.get().size());
         }
 
-        cb = wrapper.getCB();
-        assertFalse(cb.isEmpty());
-        assertEquals(items.length - target.size(), cb.size());
-        assertEquals("a", cb.min().getValue());
-        assertEquals("z", cb.max().getValue());
+        assertFalse(wrap.get().isEmpty());
+        assertEquals(items.length - target.size(), wrap.get().size());
+        assertEquals("a", wrap.get().min().getValue());
+        assertEquals("z", wrap.get().max().getValue());
 
-        cb.traverseWithPrefix(k.key("unin"), new AssertDoNothingCursor<K>());
+        wrap.get().traverseWithPrefix(k.key("unin"), new AssertDoNothingCursor<K>());
     }
 
     @Test
@@ -150,7 +152,7 @@ public class CritBitTest extends TestCase {
         public void remove(K key) {
             test = test.remove(key);
         }
-        public AbstractCritBitTree<K, String> getCB() {
+        public AbstractCritBitTree<K, String> get() {
             return test;
         }
     }
@@ -165,7 +167,7 @@ public class CritBitTest extends TestCase {
         public void remove(K key) {
             test.remove(key);
         }
-        public AbstractCritBitTree<K, String> getCB() {
+        public AbstractCritBitTree<K, String> get() {
             return test;
         }
     }
